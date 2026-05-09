@@ -3,6 +3,12 @@ const loadingEl = document.querySelector('[data-testid="loading"]');
 const responseEl = document.querySelector('[data-testid="response"]');
 const errorEl = document.querySelector('[data-testid="error"]');
 
+function parseerFoutmelding(detail) {
+  if (typeof detail === 'string') return detail;
+  if (Array.isArray(detail)) return detail.map(e => e.msg || JSON.stringify(e)).join('; ');
+  return 'Er is een fout opgetreden.';
+}
+
 const VERPLICHTE_VELDEN = ['rol', 'taak', 'doel'];
 const ALLE_VELDEN = ['rol', 'taak', 'doel', 'formaat', 'stijl', 'scope', 'eisen', 'voorbeelden'];
 
@@ -46,16 +52,9 @@ button.addEventListener('click', async () => {
       body: JSON.stringify(body),
     });
 
-    loadingEl.classList.add('hidden');
-
     if (!res.ok) {
       const data = await res.json();
-      const detail = data.detail;
-      errorEl.textContent = typeof detail === 'string'
-        ? detail
-        : Array.isArray(detail)
-          ? detail.map(e => e.msg || JSON.stringify(e)).join('; ')
-          : 'Er is een fout opgetreden.';
+      errorEl.textContent = parseerFoutmelding(data.detail);
       errorEl.classList.remove('hidden');
     } else {
       const data = await res.json();
@@ -64,8 +63,9 @@ button.addEventListener('click', async () => {
       responseEl.classList.remove('hidden');
     }
   } catch (err) {
-    loadingEl.classList.add('hidden');
     errorEl.textContent = err.message || 'Netwerkfout — controleer de verbinding.';
     errorEl.classList.remove('hidden');
+  } finally {
+    loadingEl.classList.add('hidden');
   }
 });

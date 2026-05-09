@@ -22,18 +22,20 @@ class PromptRequest(BaseModel):
     voorbeelden: str = ""
 
 
+_OPTIONELE_LABELS = [
+    ("formaat", "Formaat"),
+    ("stijl", "Stijl"),
+    ("scope", "Scope"),
+    ("eisen", "Extra eisen"),
+    ("voorbeelden", "Voorbeelden"),
+]
+
+
 def bouw_prompt(body: PromptRequest) -> str:
     regels = [f"Als {body.rol} wil ik {body.taak} zodat {body.doel}."]
-    if body.formaat:
-        regels.append(f"Formaat: {body.formaat}")
-    if body.stijl:
-        regels.append(f"Stijl: {body.stijl}")
-    if body.scope:
-        regels.append(f"Scope: {body.scope}")
-    if body.eisen:
-        regels.append(f"Extra eisen: {body.eisen}")
-    if body.voorbeelden:
-        regels.append(f"Voorbeelden: {body.voorbeelden}")
+    for attribuut, label in _OPTIONELE_LABELS:
+        if waarde := getattr(body, attribuut):
+            regels.append(f"{label}: {waarde}")
     return "\n".join(regels)
 
 
