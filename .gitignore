@@ -4,3 +4,5 @@ __pycache__/
 .env
 outputs/
 sessions/
+.claude/settings.local.json
+tests/.new-tests

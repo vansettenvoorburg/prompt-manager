@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(C:\\Users\\mvans\\.claude\\skills\\*)",
+      "Glob(C:\\Users\\mvans\\.claude\\skills\\**)"
+    ]
+  }
+}
