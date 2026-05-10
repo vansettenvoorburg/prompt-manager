@@ -1,6 +1,10 @@
+import json
 import os
+import re
 import httpx
 import uvicorn
+from datetime import datetime, timezone
+from pathlib import Path
 from fastapi import FastAPI, HTTPException
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
@@ -9,6 +13,20 @@ app = FastAPI()
 
 OLLAMA_URL = os.getenv("OLLAMA_URL", "http://localhost:11434/api/generate")
 OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "llama3.2")
+SESSIONS_DIR = Path("sessions")
+
+
+class SessionRequest(BaseModel):
+    name: str
+    rol: str = ""
+    taak: str = ""
+    doel: str = ""
+    formaat: str = ""
+    stijl: str = ""
+    scope: str = ""
+    eisen: str = ""
+    voorbeelden: str = ""
+    force: bool = False
 
 
 class PromptRequest(BaseModel):
@@ -66,6 +84,61 @@ async def handle_prompt(body: PromptRequest):
     except ConnectionError as exc:
         raise HTTPException(status_code=503, detail=str(exc))
     return {"response": result}
+
+
+def _valideer_sessienaam(name: str) -> None:
+    if not name.strip():
+        raise HTTPException(status_code=400, detail="Veld 'name' mag niet leeg zijn")
+    if not re.fullmatch(r"[a-zA-Z0-9_-]+", name):
+        raise HTTPException(status_code=400, detail="Veld 'name' mag alleen letters, cijfers, - en _ bevatten")
+
+
+@app.post("/api/sessions")
+async def save_session(body: SessionRequest):
+    _valideer_sessienaam(body.name)
+    SESSIONS_DIR.mkdir(parents=True, exist_ok=True)
+    path = SESSIONS_DIR / f"{body.name}.json"
+    if path.exists() and not body.force:
+        raise HTTPException(status_code=409, detail="Sessie bestaat al")
+    data = {
+        "name": body.name,
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "provider": "ollama",
+        "model": OLLAMA_MODEL,
+        "rol": body.rol,
+        "taak": body.taak,
+        "doel": body.doel,
+        "formaat": body.formaat,
+        "stijl": body.stijl,
+        "scope": body.scope,
+        "eisen": body.eisen,
+        "voorbeelden": body.voorbeelden,
+    }
+    try:
+        path.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
+    except OSError as exc:
+        raise HTTPException(status_code=500, detail=str(exc))
+    return {"status": "ok"}
+
+
+@app.get("/api/sessions")
+async def list_sessions():
+    if not SESSIONS_DIR.exists():
+        return {"sessions": []}
+    return {"sessions": [p.stem for p in SESSIONS_DIR.glob("*.json")]}
+
+
+@app.get("/api/sessions/{name}")
+async def get_session(name: str):
+    _valideer_sessienaam(name)
+    path = SESSIONS_DIR / f"{name}.json"
+    if not path.exists():
+        raise HTTPException(status_code=404, detail="Sessie niet gevonden")
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, OSError) as exc:
+        raise HTTPException(status_code=500, detail=str(exc))
+    return data
 
 
 app.mount("/", StaticFiles(directory="static", html=True), name="static")

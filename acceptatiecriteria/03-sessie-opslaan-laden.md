@@ -25,7 +25,7 @@
 
 - [ ] Een sessie wordt opgeslagen als JSON-bestand in de `sessions/` map (bijv. `sessions/mijn-sessie.json`)
 - [ ] Als de `sessions/` map nog niet bestaat, maakt de backend die automatisch aan
-- [ ] De JSON bevat minimaal: `name`, `provider`, `model`, `created_at` en de acht promptvelden (`rol`, `taak`, `doel`, `formaat`, `stijl`, `scope`, `eisen`, `voorbeelden`)
+- [ ] De JSON bevat minimaal: `name`, `created_at` en de acht promptvelden (`rol`, `taak`, `doel`, `formaat`, `stijl`, `scope`, `eisen`, `voorbeelden`); `provider` wordt opgeslagen als vaste waarde `"ollama"` en `model` als de huidig geconfigureerde waarde (provider-keuze is story 04)
 
 **Foutafhandeling**
 

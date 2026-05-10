@@ -55,13 +55,38 @@
       </div>
 
       <button type="button" id="submit">Verstuur</button>
+
+      <div class="veld">
+        <label for="session-name">Sessienaam</label>
+        <input type="text" id="session-name" name="session-name" placeholder="mijn-sessie">
+        <p data-testid="validation-session-name" class="validatie hidden">Vul een sessienaam in.</p>
+      </div>
+
+      <button type="button" id="opslaan-knop">Opslaan</button>
     </form>
+
+    <p data-testid="save-confirmation" class="hidden"></p>
+    <p data-testid="save-error" class="hidden"></p>
+
+    <div data-testid="overwrite-dialog" class="hidden">
+      <p>Er bestaat al een sessie met deze naam. Wilt u overschrijven?</p>
+      <button type="button" id="bevestig-overschrijven">Ja, overschrijven</button>
+      <button type="button" id="annuleer-overschrijven">Annuleren</button>
+    </div>
 
     <div data-testid="loading" class="hidden">Bezig met laden...</div>
 
     <div data-testid="response" class="hidden"></div>
 
     <div data-testid="error" class="hidden"></div>
+
+    <section>
+      <h2>Opgeslagen sessies</h2>
+      <div data-testid="sessions-list">
+        <p data-testid="sessions-empty">Nog geen sessies opgeslagen.</p>
+      </div>
+      <p data-testid="load-error" class="hidden"></p>
+    </section>
   </main>
 
   <script src="/app.js"></script>
