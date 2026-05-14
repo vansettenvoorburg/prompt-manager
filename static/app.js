@@ -14,6 +14,10 @@ const overschrijfDialogEl = document.querySelector('[data-testid="overwrite-dial
 const sessiesListEl = document.querySelector('[data-testid="sessions-list"]');
 const sessiesLeegEl = document.querySelector('[data-testid="sessions-empty"]');
 const laadFoutEl = document.querySelector('[data-testid="load-error"]');
+const providerSelectEl = document.querySelector('[data-testid="provider-select"]');
+const sessionSelectEl = document.querySelector('[data-testid="session-select"]');
+
+const sessieCache = {};
 
 function parseerFoutmelding(detail) {
   if (typeof detail === 'string') return detail;
@@ -49,6 +53,9 @@ function valideer() {
 
 function renderSessiesLijst(sessions) {
   sessiesListEl.querySelectorAll('[data-testid="session-item"]').forEach(el => el.remove());
+  while (sessionSelectEl.options.length > 1) {
+    sessionSelectEl.remove(1);
+  }
   if (sessions.length === 0) {
     sessiesLeegEl.classList.remove('hidden');
   } else {
@@ -60,7 +67,22 @@ function renderSessiesLijst(sessions) {
       item.textContent = naam;
       item.addEventListener('click', () => laadSessie(naam));
       sessiesListEl.appendChild(item);
+
+      const optie = document.createElement('option');
+      optie.value = naam;
+      optie.textContent = naam;
+      sessionSelectEl.appendChild(optie);
     }
+  }
+}
+
+function _pasSessieToe(data) {
+  for (const veld of ALLE_VELDEN) {
+    const input = document.querySelector(`[name="${veld}"]`);
+    if (input) input.value = data[veld] || '';
+  }
+  if (data.provider && providerSelectEl) {
+    providerSelectEl.value = data.provider;
   }
 }
 
@@ -69,14 +91,23 @@ async function laadSessiesLijst() {
     const res = await fetch('/api/sessions');
     if (!res.ok) return;
     const data = await res.json();
-    renderSessiesLijst(data.sessions || []);
-  } catch (_) {
-    // Bewust stil: de sessieslijst is niet-kritisch bij het laden van de pagina.
-  }
+    const sessions = data.sessions || [];
+    await Promise.all(sessions.map(async naam => {
+      try {
+        const r = await fetch(`/api/sessions/${encodeURIComponent(naam)}`);
+        if (r.ok) sessieCache[naam] = await r.json();
+      } catch (_) {}
+    }));
+    renderSessiesLijst(sessions);
+  } catch (_) {}
 }
 
 async function laadSessie(naam) {
   laadFoutEl.classList.add('hidden');
+  if (sessieCache[naam]) {
+    _pasSessieToe(sessieCache[naam]);
+    return;
+  }
   try {
     const res = await fetch(`/api/sessions/${encodeURIComponent(naam)}`);
     if (!res.ok) {
@@ -85,10 +116,8 @@ async function laadSessie(naam) {
       return;
     }
     const data = await res.json();
-    for (const veld of ALLE_VELDEN) {
-      const input = document.querySelector(`[name="${veld}"]`);
-      if (input) input.value = data[veld] || '';
-    }
+    sessieCache[naam] = data;
+    _pasSessieToe(data);
   } catch (err) {
     laadFoutEl.textContent = err.message || 'Laden mislukt.';
     laadFoutEl.classList.remove('hidden');
@@ -107,6 +136,7 @@ async function slaOp(force = false) {
   }
 
   const body = { name: naam, force };
+  body.provider = providerSelectEl ? providerSelectEl.value : 'ollama';
   for (const veld of ALLE_VELDEN) {
     body[veld] = document.querySelector(`[name="${veld}"]`).value.trim();
   }
@@ -145,6 +175,11 @@ document.getElementById('annuleer-overschrijven').addEventListener('click', () =
   overschrijfDialogEl.classList.add('hidden');
 });
 
+sessionSelectEl.addEventListener('change', () => {
+  const naam = sessionSelectEl.value;
+  if (naam) laadSessie(naam);
+});
+
 laadSessiesLijst();
 
 button.addEventListener('click', async () => {
@@ -153,6 +188,7 @@ button.addEventListener('click', async () => {
   if (!valideer()) return;
 
   const body = {};
+  body.provider = providerSelectEl ? providerSelectEl.value : 'ollama';
   for (const veld of ALLE_VELDEN) {
     body[veld] = document.querySelector(`[name="${veld}"]`).value.trim();
   }

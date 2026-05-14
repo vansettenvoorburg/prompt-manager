@@ -5,14 +5,19 @@ import httpx
 import uvicorn
 from datetime import datetime, timezone
 from pathlib import Path
+from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
+
+load_dotenv()
 
 app = FastAPI()
 
 OLLAMA_URL = os.getenv("OLLAMA_URL", "http://localhost:11434/api/generate")
 OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "llama3.2")
+GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
+GROQ_MODEL = os.getenv("GROQ_MODEL", "llama3-8b-8192")
 SESSIONS_DIR = Path("sessions")
 LOGS_DIR = Path.home() / "Documents" / "PromptSessieManager" / "logs"
 
@@ -27,6 +32,7 @@ class SessionRequest(BaseModel):
     scope: str = ""
     eisen: str = ""
     voorbeelden: str = ""
+    provider: str = "ollama"
     force: bool = False
 
 
@@ -40,6 +46,7 @@ class PromptRequest(BaseModel):
     eisen: str = ""
     voorbeelden: str = ""
     sessie: str = ""
+    provider: str = "ollama"
 
 
 _OPTIONELE_LABELS = [
@@ -59,15 +66,15 @@ def bouw_prompt(body: PromptRequest) -> str:
     return "\n".join(regels)
 
 
-def _schrijf_log(body: PromptRequest, prompt_tekst: str, antwoord: str, start: datetime, duur: float):
+def _schrijf_log(body: PromptRequest, prompt_tekst: str, antwoord: str, start: datetime, duur: float, provider: str, model: str):
     sessie = body.sessie.strip() or "geen-sessie"
     timestamp = start.strftime("%Y-%m-%dT%H:%M:%S")
     datum_tijd = start.strftime("%Y-%m-%d_%H-%M-%S")
-    bestandsnaam = f"{datum_tijd}_ollama_{sessie}.json"
+    bestandsnaam = f"{datum_tijd}_{provider}_{sessie}.json"
     log_data = {
         "timestamp": timestamp,
-        "provider": "ollama",
-        "model": OLLAMA_MODEL,
+        "provider": provider,
+        "model": model,
         "sessie": sessie,
         "prompt": {
             "rol": body.rol,
@@ -110,6 +117,23 @@ async def call_ollama(prompt: str) -> str:
             raise ConnectionError("Ollama niet bereikbaar") from exc
 
 
+async def call_groq(prompt: str) -> str:
+    async with httpx.AsyncClient(timeout=120.0) as client:
+        try:
+            response = await client.post(
+                "https://api.groq.com/openai/v1/chat/completions",
+                headers={"Authorization": f"Bearer {GROQ_API_KEY}"},
+                json={
+                    "model": GROQ_MODEL,
+                    "messages": [{"role": "user", "content": prompt}],
+                },
+            )
+            response.raise_for_status()
+            return response.json()["choices"][0]["message"]["content"]
+        except httpx.HTTPError as exc:
+            raise ConnectionError("Groq niet bereikbaar") from exc
+
+
 @app.post("/api/prompt")
 async def handle_prompt(body: PromptRequest):
     ontbrekend = [v for v in ("rol", "taak", "doel") if not getattr(body, v).strip()]
@@ -118,14 +142,25 @@ async def handle_prompt(body: PromptRequest):
             status_code=400,
             detail=f"Verplicht veld ontbreekt: {', '.join(ontbrekend)}",
         )
+    provider = body.provider.lower()
+    if provider == "groq" and not GROQ_API_KEY:
+        raise HTTPException(
+            status_code=503,
+            detail="Groq API key ontbreekt — stel GROQ_API_KEY in via .env",
+        )
     prompt = bouw_prompt(body)
     start = datetime.now()
     try:
-        result = await call_ollama(prompt)
+        if provider == "groq":
+            result = await call_groq(prompt)
+            model = GROQ_MODEL
+        else:
+            result = await call_ollama(prompt)
+            model = OLLAMA_MODEL
     except ConnectionError as exc:
         raise HTTPException(status_code=503, detail=str(exc))
     duur = (datetime.now() - start).total_seconds()
-    log_pad, log_warning = _schrijf_log(body, prompt, result, start, duur)
+    log_pad, log_warning = _schrijf_log(body, prompt, result, start, duur, provider, model)
     response: dict = {"response": result}
     if log_warning:
         response["log_warning"] = log_warning
@@ -149,11 +184,12 @@ async def save_session(body: SessionRequest):
     path = SESSIONS_DIR / f"{body.name}.json"
     if path.exists() and not body.force:
         raise HTTPException(status_code=409, detail="Sessie bestaat al")
+    model = GROQ_MODEL if body.provider == "groq" else OLLAMA_MODEL
     data = {
         "name": body.name,
         "created_at": datetime.now(timezone.utc).isoformat(),
-        "provider": "ollama",
-        "model": OLLAMA_MODEL,
+        "provider": body.provider,
+        "model": model,
         "rol": body.rol,
         "taak": body.taak,
         "doel": body.doel,
