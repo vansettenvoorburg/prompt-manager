@@ -2,6 +2,8 @@ const button = document.getElementById('submit');
 const loadingEl = document.querySelector('[data-testid="loading"]');
 const responseEl = document.querySelector('[data-testid="response"]');
 const errorEl = document.querySelector('[data-testid="error"]');
+const logStatusEl = document.querySelector('[data-testid="log-status"]');
+const logWarningEl = document.querySelector('[data-testid="log-warning"]');
 
 const opslaanKnop = document.getElementById('opslaan-knop');
 const sessieNaamInput = document.querySelector('[name="session-name"]');
@@ -26,6 +28,8 @@ function hideAll() {
   loadingEl.classList.add('hidden');
   responseEl.classList.add('hidden');
   errorEl.classList.add('hidden');
+  logStatusEl.classList.add('hidden');
+  logWarningEl.classList.add('hidden');
 }
 
 function valideer() {
@@ -152,6 +156,7 @@ button.addEventListener('click', async () => {
   for (const veld of ALLE_VELDEN) {
     body[veld] = document.querySelector(`[name="${veld}"]`).value.trim();
   }
+  body.sessie = sessieNaamInput.value.trim();
 
   loadingEl.classList.remove('hidden');
 
@@ -171,6 +176,13 @@ button.addEventListener('click', async () => {
       const response = data.response;
       responseEl.textContent = typeof response === 'string' ? response : JSON.stringify(response);
       responseEl.classList.remove('hidden');
+      if (data.log_warning) {
+        logWarningEl.textContent = data.log_warning;
+        logWarningEl.classList.remove('hidden');
+      } else if (data.log_status === 'ok') {
+        logStatusEl.textContent = 'Log opgeslagen';
+        logStatusEl.classList.remove('hidden');
+      }
     }
   } catch (err) {
     errorEl.textContent = err.message || 'Netwerkfout — controleer de verbinding.';

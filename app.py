@@ -14,6 +14,7 @@ app = FastAPI()
 OLLAMA_URL = os.getenv("OLLAMA_URL", "http://localhost:11434/api/generate")
 OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "llama3.2")
 SESSIONS_DIR = Path("sessions")
+LOGS_DIR = Path.home() / "Documents" / "PromptSessieManager" / "logs"
 
 
 class SessionRequest(BaseModel):
@@ -38,6 +39,7 @@ class PromptRequest(BaseModel):
     scope: str = ""
     eisen: str = ""
     voorbeelden: str = ""
+    sessie: str = ""
 
 
 _OPTIONELE_LABELS = [
@@ -55,6 +57,43 @@ def bouw_prompt(body: PromptRequest) -> str:
         if waarde := getattr(body, attribuut):
             regels.append(f"{label}: {waarde}")
     return "\n".join(regels)
+
+
+def _schrijf_log(body: PromptRequest, prompt_tekst: str, antwoord: str, start: datetime, duur: float):
+    sessie = body.sessie.strip() or "geen-sessie"
+    timestamp = start.strftime("%Y-%m-%dT%H:%M:%S")
+    datum_tijd = start.strftime("%Y-%m-%d_%H-%M-%S")
+    bestandsnaam = f"{datum_tijd}_ollama_{sessie}.json"
+    log_data = {
+        "timestamp": timestamp,
+        "provider": "ollama",
+        "model": OLLAMA_MODEL,
+        "sessie": sessie,
+        "prompt": {
+            "rol": body.rol,
+            "taak": body.taak,
+            "doel": body.doel,
+            "formaat": body.formaat,
+            "stijl": body.stijl,
+            "scope": body.scope,
+            "eisen": body.eisen,
+            "voorbeelden": body.voorbeelden,
+        },
+        "request": prompt_tekst,
+        "response": antwoord,
+        "duur_seconden": round(duur, 3),
+    }
+    try:
+        LOGS_DIR.mkdir(parents=True, exist_ok=True)
+    except OSError as exc:
+        return f"Logmap aanmaken mislukt: {exc}"
+    try:
+        (LOGS_DIR / bestandsnaam).write_text(
+            json.dumps(log_data, ensure_ascii=False, indent=2), encoding="utf-8"
+        )
+    except OSError as exc:
+        return f"Logbestand schrijven mislukt: {exc}"
+    return None
 
 
 async def call_ollama(prompt: str) -> str:
@@ -79,11 +118,19 @@ async def handle_prompt(body: PromptRequest):
             detail=f"Verplicht veld ontbreekt: {', '.join(ontbrekend)}",
         )
     prompt = bouw_prompt(body)
+    start = datetime.now()
     try:
         result = await call_ollama(prompt)
     except ConnectionError as exc:
         raise HTTPException(status_code=503, detail=str(exc))
-    return {"response": result}
+    duur = (datetime.now() - start).total_seconds()
+    log_warning = _schrijf_log(body, prompt, result, start, duur)
+    response: dict = {"response": result}
+    if log_warning:
+        response["log_warning"] = log_warning
+    else:
+        response["log_status"] = "ok"
+    return response
 
 
 def _valideer_sessienaam(name: str) -> None:

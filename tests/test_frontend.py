@@ -42,7 +42,7 @@ def test_invoerveld_is_zichtbaar(page: Page):
 
 def test_verstuurknop_is_zichtbaar(page: Page):
     """AC 2 — er is een verstuurknop zichtbaar."""
-    expect(page.get_by_role("button")).to_be_visible()
+    expect(page.get_by_role("button", name="Verstuur")).to_be_visible()
 
 
 def test_lege_verplichte_velden_tonen_validatiemeldingen(page: Page):
