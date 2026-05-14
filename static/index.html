@@ -54,6 +54,14 @@
         <textarea id="voorbeelden" name="voorbeelden" placeholder="zie bijlage, functielijst" rows="3"></textarea>
       </div>
 
+      <div class="veld">
+        <label for="provider">Provider</label>
+        <select id="provider" name="provider" data-testid="provider-select">
+          <option value="ollama">Ollama</option>
+          <option value="groq">Groq</option>
+        </select>
+      </div>
+
       <button type="button" id="submit">Verstuur</button>
 
       <div class="veld">
@@ -85,6 +93,9 @@
 
     <section>
       <h2>Opgeslagen sessies</h2>
+      <select data-testid="session-select">
+        <option value="">-- Kies een sessie --</option>
+      </select>
       <div data-testid="sessions-list">
         <p data-testid="sessions-empty">Nog geen sessies opgeslagen.</p>
       </div>
