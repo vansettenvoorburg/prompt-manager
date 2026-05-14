@@ -12,7 +12,7 @@
 
 - [ ] Na elke voltooide promptaanvraag wordt automatisch een logbestand aangemaakt, zonder extra handeling van de gebruiker
 - [ ] Er wordt één logbestand per aanvraag aangemaakt
-- [ ] Na succesvol opslaan toont de UI een korte melding of statusregel dat het log is opgeslagen (bijv. "Log opgeslagen")
+- [ ] Na succesvol opslaan toont de UI een korte melding met het volledige pad van het opgeslagen logbestand (bijv. "Log opgeslagen: C:\Users\mvans\Documents\PromptSessieManager\logs\2026-05-14_14-21-24_ollama_blog.json")
 
 **Locatie**
 

@@ -180,7 +180,8 @@ button.addEventListener('click', async () => {
         logWarningEl.textContent = data.log_warning;
         logWarningEl.classList.remove('hidden');
       } else if (data.log_status === 'ok') {
-        logStatusEl.textContent = 'Log opgeslagen';
+        const locatie = data.log_path ? `: ${data.log_path}` : '';
+        logStatusEl.textContent = `Log opgeslagen${locatie}`;
         logStatusEl.classList.remove('hidden');
       }
     }

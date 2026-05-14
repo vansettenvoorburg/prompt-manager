@@ -86,14 +86,15 @@ def _schrijf_log(body: PromptRequest, prompt_tekst: str, antwoord: str, start: d
     try:
         LOGS_DIR.mkdir(parents=True, exist_ok=True)
     except OSError as exc:
-        return f"Logmap aanmaken mislukt: {exc}"
+        return None, f"Logmap aanmaken mislukt: {exc}"
+    pad = LOGS_DIR / bestandsnaam
     try:
-        (LOGS_DIR / bestandsnaam).write_text(
+        pad.write_text(
             json.dumps(log_data, ensure_ascii=False, indent=2), encoding="utf-8"
         )
     except OSError as exc:
-        return f"Logbestand schrijven mislukt: {exc}"
-    return None
+        return None, f"Logbestand schrijven mislukt: {exc}"
+    return pad, None
 
 
 async def call_ollama(prompt: str) -> str:
@@ -124,12 +125,13 @@ async def handle_prompt(body: PromptRequest):
     except ConnectionError as exc:
         raise HTTPException(status_code=503, detail=str(exc))
     duur = (datetime.now() - start).total_seconds()
-    log_warning = _schrijf_log(body, prompt, result, start, duur)
+    log_pad, log_warning = _schrijf_log(body, prompt, result, start, duur)
     response: dict = {"response": result}
     if log_warning:
         response["log_warning"] = log_warning
     else:
         response["log_status"] = "ok"
+        response["log_path"] = str(log_pad)
     return response
 
 
