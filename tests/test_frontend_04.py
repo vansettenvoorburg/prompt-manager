@@ -34,17 +34,18 @@ def _vul_verplichte_velden(page: Page):
 # ---------------------------------------------------------------------------
 
 def test_log_opgeslagen_melding_zichtbaar_na_aanvraag(page: Page):
-    """Na een succesvolle aanvraag toont de UI een 'Log opgeslagen' melding."""
+    """Na een succesvolle aanvraag toont de UI 'Log opgeslagen' met het bestandspad."""
     page.route(PROMPT_ROUTE, lambda route: route.fulfill(
         status=200,
         content_type="application/json",
-        body='{"response": "Antwoord van model", "log_status": "ok"}',
+        body='{"response": "Antwoord van model", "log_status": "ok", "log_path": "/logs/2026-05-14_ollama_test.json"}',
     ))
     _vul_verplichte_velden(page)
     page.get_by_role("button", name="Verstuur").click()
 
     expect(page.locator("[data-testid=log-status]")).to_be_visible()
     expect(page.locator("[data-testid=log-status]")).to_contain_text("Log opgeslagen")
+    expect(page.locator("[data-testid=log-status]")).to_contain_text("2026-05-14_ollama_test.json")
 
 
 # ---------------------------------------------------------------------------
