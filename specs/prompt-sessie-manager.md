@@ -42,8 +42,123 @@ Een sessie bestaat uit:
 - Een gedeelde **specificatie** (context die voor alle taken geldt)
 - Een lijst van **taken** (elk een gerichte, losse opdracht)
 - De gekozen **provider en model**
+- Het **aantal runs** — hoe vaak elke taak wordt uitgevoerd, standaard 1
+- De **temperature per run** — één waarde per run, standaard 0.7
+- Een optionele **bijlage** — meegestuurd bij elke taak en elke review
 
 Sessies worden opgeslagen als JSON-bestanden en zijn herbruikbaar.
+
+### Runs en temperature
+
+Je kunt per sessie instellen hoe vaak elke taak wordt uitgevoerd, en met welke temperature per run. Dit is nuttig om variatie in output te vergelijken.
+
+```json
+"runs": 3,
+"temperatures": [0.3, 0.7, 1.0]
+```
+
+- Aantal temperatures mag minder zijn dan aantal runs — de rest wordt aangevuld met 0.7
+- Ondersteunde range: 0.0 tot 1.0 (werkt bij alle providers)
+- Elke run wordt apart gelogd met het temperature-niveau in de bestandsnaam
+
+Voorbeeld van logbestanden bij 3 runs:
+
+```
+logs/
+├── 2026-05-10_14-32-01_ollama_sessie-tests_run1_t0.3.json
+├── 2026-05-10_14-32-08_ollama_sessie-tests_run2_t0.7.json
+└── 2026-05-10_14-32-15_ollama_sessie-tests_run3_t1.0.json
+```
+
+---
+
+### Bijlage
+
+Per sessie kun je één bijlage toevoegen. De inhoud wordt automatisch geëxtraheerd en meegestuurd bij elke taak én elke review in de sessie.
+
+Ondersteunde bestandstypen:
+
+| Type | Extensies | Verwerking |
+|---|---|---|
+| Tekst en code | `.txt`, `.md`, `.py`, `.js`, `.ts`, `.html`, `.css`, `.json` | Direct inlezen |
+| PDF | `.pdf` | Tekstextractie via `pymupdf` |
+| Word | `.docx` | Tekstextractie via `python-docx` |
+
+De bijlage wordt toegevoegd aan het einde van de prompt:
+
+```
+Als [rol] wil ik [taak] zodat [doel].
+Formaat: [formaat]
+...
+Bijlage:
+[geëxtraheerde tekst uit het bestand]
+```
+
+Opmaak, afbeeldingen en tabellen uit PDF en Word gaan verloren bij extractie — alleen de tekst wordt meegestuurd. Voor jouw gebruik case (inhoud meesturen, geen lay-out) is dat acceptabel.
+
+Extra Python dependencies:
+- `pymupdf` — voor PDF tekstextractie
+- `python-docx` — voor Word tekstextractie
+
+---
+
+### Review pipeline — iteratief verbeteren
+
+Na de hoofdprompt kun je één of meerdere reviewers toevoegen. Elke reviewer krijgt de laatste versie van de output en verbetert die. De verbeterde versie is de input voor de volgende reviewer of run.
+
+De reviewprompt heeft een vaste structuur:
+
+```
+Review het meegestuurde resultaat in de rol van [rol].
+Te reviewen tekst: [output vorige stap]
+```
+
+Voorbeeld met twee reviewers, elk met eigen aantal runs en temperature:
+
+```json
+"reviewers": [
+  {
+    "rol": "kritische QA engineer",
+    "runs": 2,
+    "temperatures": [0.5, 0.8]
+  },
+  {
+    "rol": "senior developer met focus op leesbaarheid",
+    "runs": 1,
+    "temperatures": [0.7]
+  }
+]
+```
+
+De verwerkingsvolgorde bij iteratief verbeteren:
+
+```
+Hoofdprompt → output v1
+Reviewer 1, run 1 (t0.5) → verbetert v1 → output v2
+Reviewer 1, run 2 (t0.8) → verbetert v2 → output v3
+Reviewer 2, run 1 (t0.7) → verbetert v3 → output v4
+```
+
+Elke stap wordt apart gelogd.
+
+---
+
+### Review pipeline — alleen loggen
+
+Alle reviewers ontvangen altijd de originele output van de hoofdprompt. Ze reviewen onafhankelijk van elkaar en worden apart gelogd. Er vindt geen terugkoppeling plaats.
+
+```
+Hoofdprompt → output v1
+Reviewer 1, run 1 → reviewt v1 → gelogd
+Reviewer 1, run 2 → reviewt v1 → gelogd
+Reviewer 2, run 1 → reviewt v1 → gelogd
+```
+
+De modus (iteratief of alleen loggen) is instelbaar per sessie:
+
+```json
+"review_modus": "iteratief"   // of: "loggen"
+```
 
 ---
 
@@ -122,6 +237,59 @@ Per sessie kun je varianten aanmaken door één of meerdere velden te wisselen:
 
 ---
 
+## Logging
+
+Elke request en response wordt automatisch opgeslagen in een herkenbare map in de gebruikersmap. Geen extra instelling nodig — de map wordt aangemaakt bij eerste gebruik.
+
+### Locatie
+
+| Besturingssysteem | Pad |
+|---|---|
+| Windows | `C:\Users\jouw-naam\Documents\PromptSessieManager\logs\` |
+| Mac | `~/Documents/PromptSessieManager/logs/` |
+| Linux | `~/Documents/PromptSessieManager/logs/` |
+
+Python bepaalt het juiste pad automatisch via `pathlib.Path.home()`, ongeacht het besturingssysteem.
+
+### Bestandsnaam
+
+Elk request krijgt een eigen bestand, direct herkenbaar zonder te openen:
+
+```
+logs/
+├── 2026-05-10_14-32-01_ollama_sessie-tests.json
+├── 2026-05-10_14-35-22_groq_sessie-tests.json
+└── 2026-05-10_15-01-44_google_oefeningen.json
+```
+
+Formaat: `[datum]_[tijd]_[provider]_[sessienaam].json`
+
+### Inhoud per logbestand
+
+```json
+{
+  "timestamp": "2026-05-10T14:32:01",
+  "provider": "ollama",
+  "model": "llama3.2",
+  "sessie": "unit-tests-inlogscherm",
+  "prompt": {
+    "rol": "...",
+    "taak": "...",
+    "doel": "...",
+    "formaat": "...",
+    "stijl": "...",
+    "scope": "...",
+    "eisen": "...",
+    "voorbeelden": "..."
+  },
+  "request": "volledige samengestelde prompt zoals verstuurd naar de API",
+  "response": "output van het model",
+  "duur_seconden": 4.2
+}
+```
+
+---
+
 ## Uitvoer-opties
 
 - **Één taak uitvoeren** — handmatig, stap voor stap
@@ -185,7 +353,12 @@ Bouw in deze volgorde, zodat je na elke stap iets werkends hebt:
 1. Backend die één prompt samenstelt en naar **Ollama** stuurt — werkt zonder account
 2. Eenvoudige HTML-interface met de acht promptvelden
 3. Sessie opslaan en laden als JSON
-4. **Groq** toevoegen als tweede provider — gratis account, OpenAI-compatibel, minimale codewijziging
-5. **Google AI Studio** toevoegen als derde provider — zelfde patroon
-6. **OpenRouter** toevoegen voor model-vergelijking
-7. Betaalde providers (OpenAI, Mistral, Azure OpenAI) als optionele uitbreiding
+4. **Logging** toevoegen — request en response opslaan als JSON in de gebruikersmap
+5. **Groq** toevoegen als tweede provider — gratis account, OpenAI-compatibel, minimale codewijziging
+6. **Aantal runs en temperature per run** toevoegen — instelbaar per sessie, elke run apart gelogd
+7. **Bijlage** toevoegen — tekstbestanden en code direct, PDF via `pymupdf`, Word via `python-docx`, meegestuurd bij elke taak en review
+8. **Review pipeline — iteratief verbeteren** — reviewers die de laatste output verbeteren, elke stap apart gelogd
+9. **Review pipeline — alleen loggen** — reviewers die altijd de originele output reviewen, onafhankelijk van elkaar
+9. **Google AI Studio** toevoegen als derde provider — zelfde patroon
+10. **OpenRouter** toevoegen voor model-vergelijking
+11. Betaalde providers (OpenAI, Mistral, Azure OpenAI) als optionele uitbreiding
