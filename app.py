@@ -34,6 +34,9 @@ class SessionRequest(BaseModel):
     voorbeelden: str = ""
     provider: str = "ollama"
     force: bool = False
+    runs: int = 1
+    temperature_modus: str = "alle"
+    temperatures: list[float] = []
 
 
 class PromptRequest(BaseModel):
@@ -47,6 +50,9 @@ class PromptRequest(BaseModel):
     voorbeelden: str = ""
     sessie: str = ""
     provider: str = "ollama"
+    runs: int = 1
+    temperature_modus: str = "alle"
+    temperatures: list[float] = []
 
 
 _OPTIONELE_LABELS = [
@@ -66,16 +72,19 @@ def bouw_prompt(body: PromptRequest) -> str:
     return "\n".join(regels)
 
 
-def _schrijf_log(body: PromptRequest, prompt_tekst: str, antwoord: str, start: datetime, duur: float, provider: str, model: str):
+def _schrijf_log(body: PromptRequest, prompt_tekst: str, antwoord: str, start: datetime, duur: float, model: str, run_nummer: int, temperature: float):
+    provider = body.provider.lower()
     sessie = body.sessie.strip() or "geen-sessie"
     timestamp = start.strftime("%Y-%m-%dT%H:%M:%S")
     datum_tijd = start.strftime("%Y-%m-%d_%H-%M-%S")
-    bestandsnaam = f"{datum_tijd}_{provider}_{sessie}.json"
+    bestandsnaam = f"{datum_tijd}_{provider}_{sessie}_run{run_nummer}_t{temperature:g}.json"
     log_data = {
         "timestamp": timestamp,
         "provider": provider,
         "model": model,
         "sessie": sessie,
+        "run_nummer": run_nummer,
+        "temperature": temperature,
         "prompt": {
             "rol": body.rol,
             "taak": body.taak,
@@ -104,12 +113,17 @@ def _schrijf_log(body: PromptRequest, prompt_tekst: str, antwoord: str, start: d
     return pad, None
 
 
-async def call_ollama(prompt: str) -> str:
+async def call_ollama(prompt: str, temperature: float) -> str:
     async with httpx.AsyncClient(timeout=120.0) as client:
         try:
             response = await client.post(
                 OLLAMA_URL,
-                json={"model": OLLAMA_MODEL, "prompt": prompt, "stream": False},
+                json={
+                    "model": OLLAMA_MODEL,
+                    "prompt": prompt,
+                    "stream": False,
+                    "options": {"temperature": temperature},
+                },
             )
             response.raise_for_status()
             return response.json()["response"]
@@ -117,7 +131,7 @@ async def call_ollama(prompt: str) -> str:
             raise ConnectionError("Ollama niet bereikbaar") from exc
 
 
-async def call_groq(prompt: str) -> str:
+async def call_groq(prompt: str, temperature: float) -> str:
     async with httpx.AsyncClient(timeout=120.0) as client:
         try:
             response = await client.post(
@@ -126,6 +140,7 @@ async def call_groq(prompt: str) -> str:
                 json={
                     "model": GROQ_MODEL,
                     "messages": [{"role": "user", "content": prompt}],
+                    "temperature": temperature,
                 },
             )
             response.raise_for_status()
@@ -142,32 +157,60 @@ async def handle_prompt(body: PromptRequest):
             status_code=400,
             detail=f"Verplicht veld ontbreekt: {', '.join(ontbrekend)}",
         )
+
+    if body.runs < 1:
+        raise HTTPException(status_code=400, detail="'runs' moet minimaal 1 zijn")
+
+    if not body.temperatures:
+        raise HTTPException(status_code=400, detail="Temperature is verplicht")
+
+    for t in body.temperatures:
+        if not (0.0 <= t <= 2.0):
+            raise HTTPException(status_code=400, detail="Temperature moet tussen 0 en 2 liggen")
+
+    if body.temperature_modus == "per_run" and len(body.temperatures) != body.runs:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Vul {body.runs} temperatures in, of kies 'één voor alle runs'",
+        )
+
     provider = body.provider.lower()
     if provider == "groq" and not GROQ_API_KEY:
         raise HTTPException(
             status_code=503,
             detail="Groq API key ontbreekt — stel GROQ_API_KEY in via .env",
         )
+
     prompt = bouw_prompt(body)
-    start = datetime.now()
-    try:
-        if provider == "groq":
-            result = await call_groq(prompt)
-            model = GROQ_MODEL
-        else:
-            result = await call_ollama(prompt)
-            model = OLLAMA_MODEL
-    except ConnectionError as exc:
-        raise HTTPException(status_code=503, detail=str(exc))
-    duur = (datetime.now() - start).total_seconds()
-    log_pad, log_warning = _schrijf_log(body, prompt, result, start, duur, provider, model)
-    response: dict = {"response": result}
-    if log_warning:
-        response["log_warning"] = log_warning
-    else:
-        response["log_status"] = "ok"
-        response["log_path"] = str(log_pad)
-    return response
+    resultaten = []
+
+    for i in range(1, body.runs + 1):
+        temperature = body.temperatures[i - 1] if body.temperature_modus == "per_run" else body.temperatures[0]
+        start = datetime.now()
+
+        try:
+            if provider == "groq":
+                result = await call_groq(prompt, temperature)
+                model = GROQ_MODEL
+            else:
+                result = await call_ollama(prompt, temperature)
+                model = OLLAMA_MODEL
+
+            duur = (datetime.now() - start).total_seconds()
+            log_pad, log_warning = _schrijf_log(body, prompt, result, start, duur, model, i, temperature)
+
+            run_result: dict = {"run_nummer": i, "temperature": temperature, "response": result}
+            if log_warning:
+                run_result["log_warning"] = log_warning
+            else:
+                run_result["log_status"] = "ok"
+                run_result["log_path"] = str(log_pad)
+            resultaten.append(run_result)
+
+        except ConnectionError as exc:
+            resultaten.append({"run_nummer": i, "fout": str(exc)})
+
+    return {"runs": resultaten}
 
 
 def _valideer_sessienaam(name: str) -> None:
@@ -198,6 +241,9 @@ async def save_session(body: SessionRequest):
         "scope": body.scope,
         "eisen": body.eisen,
         "voorbeelden": body.voorbeelden,
+        "runs": body.runs,
+        "temperature_modus": body.temperature_modus,
+        "temperatures": body.temperatures,
     }
     try:
         path.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")

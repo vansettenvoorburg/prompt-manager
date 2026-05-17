@@ -58,7 +58,7 @@ Je kunt per sessie instellen hoe vaak elke taak wordt uitgevoerd, en met welke t
 ```
 
 - Aantal temperatures mag minder zijn dan aantal runs — de rest wordt aangevuld met 0.7
-- Ondersteunde range: 0.0 tot 1.0 (werkt bij alle providers)
+- Ondersteunde range: 0.0 tot 2.0 (werkt bij alle providers)
 - Elke run wordt apart gelogd met het temperature-niveau in de bestandsnaam
 
 Voorbeeld van logbestanden bij 3 runs:

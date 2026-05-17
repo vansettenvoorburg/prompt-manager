@@ -14,7 +14,7 @@ from unittest.mock import AsyncMock, patch
 
 pytestmark = pytest.mark.asyncio
 
-VERPLICHT = {"rol": "Python developer", "taak": "een API bouwen", "doel": "data te verwerken"}
+VERPLICHT = {"rol": "Python developer", "taak": "een API bouwen", "doel": "data te verwerken", "temperatures": [0.8]}
 
 
 async def test_endpoint_exists(client):
@@ -37,17 +37,18 @@ async def test_geldige_invoer_retourneert_ollama_antwoord(client):
     with patch("app.call_ollama", new_callable=AsyncMock, return_value="Dit is het antwoord"):
         response = await client.post("/api/prompt", json=VERPLICHT)
     assert response.status_code == 200
-    assert response.json()["response"] == "Dit is het antwoord"
+    assert response.json()["runs"][0]["response"] == "Dit is het antwoord"
 
 
-async def test_ollama_onbereikbaar_geeft_503(client):
-    """AC 6 — als Ollama niet bereikbaar is, retourneert de API 503 met uitleg."""
+async def test_ollama_onbereikbaar_geeft_fout_in_run(client):
+    """AC 6 — als Ollama niet bereikbaar is, bevat de run een fout-veld (aanvraag geeft 200)."""
     with patch(
         "app.call_ollama",
         new_callable=AsyncMock,
         side_effect=ConnectionError("Ollama niet bereikbaar"),
     ):
         response = await client.post("/api/prompt", json=VERPLICHT)
-    assert response.status_code == 503
-    body = response.json()
-    assert body.get("detail"), "Foutmelding mag niet leeg zijn"
+    assert response.status_code == 200
+    runs = response.json()["runs"]
+    assert len(runs) == 1
+    assert "fout" in runs[0], "Mislukte run moet een fout-veld bevatten"

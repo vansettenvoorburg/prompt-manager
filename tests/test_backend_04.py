@@ -36,6 +36,7 @@ PROMPT = {
     "eisen": "",
     "voorbeelden": "",
     "sessie": "mijn-sessie",
+    "temperatures": [0.8],
 }
 
 PROMPT_ZONDER_SESSIE = {
@@ -47,6 +48,7 @@ PROMPT_ZONDER_SESSIE = {
     "scope": "",
     "eisen": "",
     "voorbeelden": "",
+    "temperatures": [0.8],
 }
 
 
@@ -219,7 +221,7 @@ async def test_schrijffout_voltooit_aanvraag_toch(client, tmp_path, monkeypatch)
     with patch("app.call_ollama", new_callable=AsyncMock, return_value="Antwoord"):
         response = await client.post("/api/prompt", json=PROMPT)
     assert response.status_code == 200
-    assert response.json()["response"] == "Antwoord"
+    assert response.json()["runs"][0]["response"] == "Antwoord"
 
 
 async def test_schrijffout_retourneert_log_warning(client, tmp_path, monkeypatch):
@@ -229,7 +231,7 @@ async def test_schrijffout_retourneert_log_warning(client, tmp_path, monkeypatch
     monkeypatch.setattr("app.LOGS_DIR", blokkeer)
     with patch("app.call_ollama", new_callable=AsyncMock, return_value="Antwoord"):
         response = await client.post("/api/prompt", json=PROMPT)
-    assert "log_warning" in response.json(), "log_warning ontbreekt in response bij logfout"
+    assert "log_warning" in response.json()["runs"][0], "log_warning ontbreekt in response bij logfout"
 
 
 async def test_logs_map_aanmaken_mislukt_voltooit_aanvraag(client, tmp_path, monkeypatch):
@@ -249,4 +251,4 @@ async def test_logs_map_aanmaken_mislukt_retourneert_log_warning(client, tmp_pat
     monkeypatch.setattr("app.LOGS_DIR", geblokkeerd / "logs")
     with patch("app.call_ollama", new_callable=AsyncMock, return_value="Antwoord"):
         response = await client.post("/api/prompt", json=PROMPT)
-    assert "log_warning" in response.json(), "log_warning ontbreekt in response bij aanmakingsfout"
+    assert "log_warning" in response.json()["runs"][0], "log_warning ontbreekt in response bij aanmakingsfout"
