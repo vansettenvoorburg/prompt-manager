@@ -4,6 +4,7 @@ const responseEl = document.querySelector('[data-testid="response"]');
 const errorEl = document.querySelector('[data-testid="error"]');
 const logStatusEl = document.querySelector('[data-testid="log-status"]');
 const logWarningEl = document.querySelector('[data-testid="log-warning"]');
+const runResultsEl = document.querySelector('[data-testid="run-results"]');
 
 const opslaanKnop = document.getElementById('opslaan-knop');
 const sessieNaamInput = document.querySelector('[name="session-name"]');
@@ -16,6 +17,11 @@ const sessiesLeegEl = document.querySelector('[data-testid="sessions-empty"]');
 const laadFoutEl = document.querySelector('[data-testid="load-error"]');
 const providerSelectEl = document.querySelector('[data-testid="provider-select"]');
 const sessionSelectEl = document.querySelector('[data-testid="session-select"]');
+const runsInputEl = document.querySelector('[data-testid="runs-input"]');
+const temperatureInputEl = document.querySelector('[data-testid="temperature-input"]');
+
+const PROVIDER_DEFAULTS = { ollama: '0.8', groq: '1' };
+let temperatureHandmatigGewijzigd = false;
 
 const sessieCache = {};
 
@@ -34,6 +40,19 @@ function hideAll() {
   errorEl.classList.add('hidden');
   logStatusEl.classList.add('hidden');
   logWarningEl.classList.add('hidden');
+  runResultsEl.classList.add('hidden');
+}
+
+function _getModus() {
+  const checked = document.querySelector('[name="temperature-modus"]:checked');
+  return checked ? checked.value : 'alle';
+}
+
+function _parseTemperatures(tempWaarde, modus) {
+  if (modus === 'per_run') {
+    return tempWaarde.split(',').map(s => parseFloat(s.trim()));
+  }
+  return [parseFloat(tempWaarde)];
 }
 
 function valideer() {
@@ -48,7 +67,59 @@ function valideer() {
       melding.classList.add('hidden');
     }
   }
-  return geldig;
+  if (!geldig) return false;
+
+  const runs = parseInt(runsInputEl.value, 10);
+  if (!runs || runs < 1) {
+    errorEl.textContent = 'Aantal runs moet minimaal 1 zijn.';
+    errorEl.classList.remove('hidden');
+    return false;
+  }
+
+  const tempWaarde = temperatureInputEl.value.trim();
+  if (!tempWaarde) {
+    errorEl.textContent = 'Verplicht — voer een temperature in om de prompt uit te voeren.';
+    errorEl.classList.remove('hidden');
+    return false;
+  }
+
+  const modus = _getModus();
+  const temperatures = _parseTemperatures(tempWaarde, modus);
+
+  for (const t of temperatures) {
+    if (isNaN(t) || t < 0.0 || t > 2.0) {
+      errorEl.textContent = 'Temperature moet tussen 0 en 2 liggen.';
+      errorEl.classList.remove('hidden');
+      return false;
+    }
+  }
+
+  if (modus === 'per_run' && temperatures.length !== runs) {
+    errorEl.textContent = `Vul ${runs} temperatures in, of kies 'één voor alle runs'.`;
+    errorEl.classList.remove('hidden');
+    return false;
+  }
+
+  return true;
+}
+
+function renderRunResultaten(runs) {
+  runResultsEl.innerHTML = '';
+  logStatusEl.classList.add('hidden');
+  logWarningEl.classList.add('hidden');
+  for (const run of runs) {
+    const item = document.createElement('div');
+    if (run.fout) {
+      item.textContent = `Run ${run.run_nummer}: Fout — ${run.fout}`;
+    } else {
+      let tekst = `Run ${run.run_nummer} (temperature ${run.temperature}): ${run.response}`;
+      if (run.log_status === 'ok') tekst += ` [Log opgeslagen: ${run.log_path}]`;
+      if (run.log_warning) tekst += ` [Waarschuwing: ${run.log_warning}]`;
+      item.textContent = tekst;
+    }
+    runResultsEl.appendChild(item);
+  }
+  runResultsEl.classList.remove('hidden');
 }
 
 function renderSessiesLijst(sessions) {
@@ -83,6 +154,17 @@ function _pasSessieToe(data) {
   }
   if (data.provider && providerSelectEl) {
     providerSelectEl.value = data.provider;
+  }
+  if (data.runs !== undefined) {
+    runsInputEl.value = String(data.runs);
+  }
+  if (data.temperature_modus) {
+    const radio = document.querySelector(`[name="temperature-modus"][value="${data.temperature_modus}"]`);
+    if (radio) radio.checked = true;
+  }
+  if (data.temperatures && data.temperatures.length > 0) {
+    temperatureInputEl.value = data.temperatures.join(', ');
+    temperatureHandmatigGewijzigd = true;
   }
 }
 
@@ -135,11 +217,21 @@ async function slaOp(force = false) {
     return;
   }
 
+  const runs = parseInt(runsInputEl.value, 10) || 1;
+  const modus = _getModus();
+  const tempWaarde = temperatureInputEl.value.trim();
+  const temperaturesArray = tempWaarde
+    ? _parseTemperatures(tempWaarde, modus).filter(n => !isNaN(n))
+    : [];
+
   const body = { name: naam, force };
   body.provider = providerSelectEl ? providerSelectEl.value : 'ollama';
   for (const veld of ALLE_VELDEN) {
     body[veld] = document.querySelector(`[name="${veld}"]`).value.trim();
   }
+  body.runs = runs;
+  body.temperature_modus = modus;
+  body.temperatures = temperaturesArray;
 
   try {
     const res = await fetch('/api/sessions', {
@@ -169,6 +261,16 @@ async function slaOp(force = false) {
   }
 }
 
+providerSelectEl.addEventListener('change', () => {
+  if (!temperatureHandmatigGewijzigd) {
+    temperatureInputEl.value = PROVIDER_DEFAULTS[providerSelectEl.value] || '0.8';
+  }
+});
+
+temperatureInputEl.addEventListener('input', () => {
+  temperatureHandmatigGewijzigd = true;
+});
+
 opslaanKnop.addEventListener('click', () => slaOp(false));
 document.getElementById('bevestig-overschrijven').addEventListener('click', () => slaOp(true));
 document.getElementById('annuleer-overschrijven').addEventListener('click', () => {
@@ -187,44 +289,42 @@ button.addEventListener('click', async () => {
 
   if (!valideer()) return;
 
+  const runs = parseInt(runsInputEl.value, 10);
+  const modus = _getModus();
+  const tempWaarde = temperatureInputEl.value.trim();
+  const temperaturesArray = _parseTemperatures(tempWaarde, modus);
+
   const body = {};
   body.provider = providerSelectEl ? providerSelectEl.value : 'ollama';
   for (const veld of ALLE_VELDEN) {
     body[veld] = document.querySelector(`[name="${veld}"]`).value.trim();
   }
   body.sessie = sessieNaamInput.value.trim();
+  body.runs = runs;
+  body.temperature_modus = modus;
+  body.temperatures = temperaturesArray;
 
   loadingEl.classList.remove('hidden');
 
   try {
-    const res = await fetch('/api/prompt', {
+    const response = await fetch('/api/prompt', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
     });
 
-    if (!res.ok) {
-      const data = await res.json();
+    loadingEl.classList.add('hidden');
+
+    const data = await response.json();
+    if (response.ok) {
+      renderRunResultaten(data.runs);
+    } else {
       errorEl.textContent = parseerFoutmelding(data.detail);
       errorEl.classList.remove('hidden');
-    } else {
-      const data = await res.json();
-      const response = data.response;
-      responseEl.textContent = typeof response === 'string' ? response : JSON.stringify(response);
-      responseEl.classList.remove('hidden');
-      if (data.log_warning) {
-        logWarningEl.textContent = data.log_warning;
-        logWarningEl.classList.remove('hidden');
-      } else if (data.log_status === 'ok') {
-        const locatie = data.log_path ? `: ${data.log_path}` : '';
-        logStatusEl.textContent = `Log opgeslagen${locatie}`;
-        logStatusEl.classList.remove('hidden');
-      }
     }
   } catch (err) {
+    loadingEl.classList.add('hidden');
     errorEl.textContent = err.message || 'Netwerkfout — controleer de verbinding.';
     errorEl.classList.remove('hidden');
-  } finally {
-    loadingEl.classList.add('hidden');
   }
 });

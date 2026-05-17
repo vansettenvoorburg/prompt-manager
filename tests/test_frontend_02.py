@@ -129,14 +129,14 @@ def test_antwoord_verschijnt_na_correct_invullen(page: Page):
         lambda route: route.fulfill(
             status=200,
             content_type="application/json",
-            body='{"response": "Hier is het antwoord"}',
+            body='{"runs": [{"run_nummer": 1, "temperature": 0.8, "response": "Hier is het antwoord"}]}',
         ),
     )
     _vul_verplichte_velden(page)
     page.get_by_role("button", name="Verstuur").click()
 
-    expect(page.locator("[data-testid=response]")).to_be_visible()
-    expect(page.locator("[data-testid=response]")).to_contain_text("Hier is het antwoord")
+    expect(page.locator("[data-testid=run-results]")).to_be_visible()
+    expect(page.locator("[data-testid=run-results]")).to_contain_text("Hier is het antwoord")
 
 
 def test_optionele_velden_worden_meegestuurd_in_api_call(page: Page):
@@ -148,7 +148,7 @@ def test_optionele_velden_worden_meegestuurd_in_api_call(page: Page):
         route.fulfill(
             status=200,
             content_type="application/json",
-            body='{"response": "ok"}',
+            body='{"runs": [{"run_nummer": 1, "temperature": 0.8, "response": "ok"}]}',
         )
 
     page.route(OLLAMA_ROUTE, inspect_route)
@@ -156,7 +156,7 @@ def test_optionele_velden_worden_meegestuurd_in_api_call(page: Page):
     page.locator("[name=formaat]").fill("markdown")
     page.get_by_role("button", name="Verstuur").click()
 
-    page.wait_for_selector("[data-testid=response]")
+    page.wait_for_selector("[data-testid=run-results]")
     assert captured_body.get("formaat") == "markdown"
 
 
@@ -174,7 +174,7 @@ def test_laadstatus_zichtbaar_tijdens_wachten(page: Page):
                 route.fulfill(
                     status=200,
                     content_type="application/json",
-                    body='{"response": "Antwoord"}',
+                    body='{"runs": [{"run_nummer": 1, "temperature": 0.8, "response": "Antwoord"}]}',
                 )
             except Exception:
                 pass

@@ -38,14 +38,13 @@ def test_log_opgeslagen_melding_zichtbaar_na_aanvraag(page: Page):
     page.route(PROMPT_ROUTE, lambda route: route.fulfill(
         status=200,
         content_type="application/json",
-        body='{"response": "Antwoord van model", "log_status": "ok", "log_path": "/logs/2026-05-14_ollama_test.json"}',
+        body='{"runs": [{"run_nummer": 1, "temperature": 0.8, "response": "Antwoord van model", "log_status": "ok", "log_path": "/logs/2026-05-14_ollama_test.json"}]}',
     ))
     _vul_verplichte_velden(page)
     page.get_by_role("button", name="Verstuur").click()
 
-    expect(page.locator("[data-testid=log-status]")).to_be_visible()
-    expect(page.locator("[data-testid=log-status]")).to_contain_text("Log opgeslagen")
-    expect(page.locator("[data-testid=log-status]")).to_contain_text("2026-05-14_ollama_test.json")
+    expect(page.locator("[data-testid=run-results]")).to_contain_text("Log opgeslagen")
+    expect(page.locator("[data-testid=run-results]")).to_contain_text("2026-05-14_ollama_test.json")
 
 
 # ---------------------------------------------------------------------------
@@ -57,12 +56,12 @@ def test_log_mislukt_toont_waarschuwing(page: Page):
     page.route(PROMPT_ROUTE, lambda route: route.fulfill(
         status=200,
         content_type="application/json",
-        body='{"response": "Antwoord van model", "log_warning": "Logging mislukt"}',
+        body='{"runs": [{"run_nummer": 1, "temperature": 0.8, "response": "Antwoord van model", "log_warning": "Logging mislukt"}]}',
     ))
     _vul_verplichte_velden(page)
     page.get_by_role("button", name="Verstuur").click()
 
-    expect(page.locator("[data-testid=log-warning]")).to_be_visible()
+    expect(page.locator("[data-testid=run-results]")).to_contain_text("Logging mislukt")
 
 
 def test_log_mislukt_toont_antwoord_toch(page: Page):
@@ -70,9 +69,10 @@ def test_log_mislukt_toont_antwoord_toch(page: Page):
     page.route(PROMPT_ROUTE, lambda route: route.fulfill(
         status=200,
         content_type="application/json",
-        body='{"response": "Antwoord ondanks logfout", "log_warning": "Logging mislukt"}',
+        body='{"runs": [{"run_nummer": 1, "temperature": 0.8, "response": "Antwoord ondanks logfout", "log_warning": "Logging mislukt"}]}',
     ))
     _vul_verplichte_velden(page)
     page.get_by_role("button", name="Verstuur").click()
 
-    expect(page.locator("[data-testid=response]")).to_contain_text("Antwoord ondanks logfout")
+    expect(page.locator("[data-testid=run-results]")).to_contain_text("Antwoord ondanks logfout")
+    expect(page.locator("[data-testid=run-results]")).to_contain_text("Logging mislukt")

@@ -11,8 +11,8 @@
 **Automatisch opslaan**
 
 - [ ] Na elke voltooide promptaanvraag wordt automatisch een logbestand aangemaakt, zonder extra handeling van de gebruiker
-- [ ] Er wordt één logbestand per aanvraag aangemaakt
-- [ ] Na succesvol opslaan toont de UI een korte melding met het volledige pad van het opgeslagen logbestand (bijv. "Log opgeslagen: C:\Users\mvans\Documents\PromptSessieManager\logs\2026-05-14_14-21-24_ollama_blog.json")
+- [ ] Er wordt één logbestand per run aangemaakt (bij meerdere runs dus meerdere bestanden)
+- [ ] Na succesvol opslaan toont de UI bij elke run een korte melding met het volledige pad van het opgeslagen logbestand
 
 **Locatie**
 
@@ -37,7 +37,7 @@
 
 **Foutafhandeling**
 
-- [ ] Als het aanmaken van het logbestand mislukt (bijv. schrijffout of ontbrekende rechten), wordt de aanvraag wél voltooid en toont de UI een waarschuwing dat logging mislukt is
+- [ ] Als het aanmaken van het logbestand mislukt (bijv. schrijffout of ontbrekende rechten), wordt de aanvraag wél voltooid en toont de UI bij die run een waarschuwing dat logging mislukt is
 - [ ] Als de `logs/` map niet aangemaakt kan worden, wordt eveneens een waarschuwing getoond; de aanvraag wordt daarna toch uitgevoerd
 
 ---

@@ -28,6 +28,7 @@ PROMPT_GROQ = {
     "doel": "data te verwerken",
     "sessie": "mijn-sessie",
     "provider": "groq",
+    "temperatures": [0.8],
 }
 
 PROMPT_OLLAMA = {
@@ -36,6 +37,7 @@ PROMPT_OLLAMA = {
     "doel": "data te verwerken",
     "sessie": "mijn-sessie",
     "provider": "ollama",
+    "temperatures": [0.8],
 }
 
 SESSIE_GROQ = {
@@ -173,11 +175,12 @@ async def test_groq_fout_geen_logbestand(client, groq_key, logs_dir):
     assert len(list(logs_dir.iterdir())) == 0
 
 
-async def test_groq_fout_geeft_503(client, groq_key):
-    """Als de Groq API niet bereikbaar is, retourneert de backend HTTP 503."""
+async def test_groq_fout_geeft_fout_in_run(client, groq_key):
+    """Als de Groq API niet bereikbaar is, bevat de run een fout-veld (aanvraag geeft 200)."""
     with patch("app.call_groq", new_callable=AsyncMock, side_effect=ConnectionError("Groq niet bereikbaar")):
         response = await client.post("/api/prompt", json=PROMPT_GROQ)
-    assert response.status_code == 503
+    assert response.status_code == 200
+    assert "fout" in response.json()["runs"][0]
 
 
 # ---------------------------------------------------------------------------
@@ -188,7 +191,7 @@ async def test_prompt_identiek_opgebouwd_bij_groq_en_ollama(client, groq_key):
     """De samengestelde prompt is voor Groq identiek aan die voor Ollama bij dezelfde invoer."""
     vastgelegde_prompts = []
 
-    async def vang_op(prompt):
+    async def vang_op(prompt, temperature):
         vastgelegde_prompts.append(prompt)
         return "antwoord"
 
@@ -198,6 +201,7 @@ async def test_prompt_identiek_opgebouwd_bij_groq_en_ollama(client, groq_key):
         "doel": "data te verwerken",
         "formaat": "JSON",
         "sessie": "test",
+        "temperatures": [0.8],
     }
 
     with patch("app.call_ollama", side_effect=vang_op):

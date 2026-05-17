@@ -13,7 +13,7 @@ from unittest.mock import AsyncMock, patch
 
 pytestmark = pytest.mark.asyncio
 
-VERPLICHT = {"rol": "Python developer", "taak": "een API bouwen", "doel": "data te verwerken"}
+VERPLICHT = {"rol": "Python developer", "taak": "een API bouwen", "doel": "data te verwerken", "temperatures": [0.8]}
 ALLE_VELDEN = {
     **VERPLICHT,
     "formaat": "JSON",
@@ -35,7 +35,7 @@ async def test_prompt_template_vaste_structuur(client):
     """De samengestelde prompt volgt de vaste template met correcte labels."""
     captured = {}
 
-    async def mock_ollama(prompt: str) -> str:
+    async def mock_ollama(prompt: str, temperature: float) -> str:
         captured["prompt"] = prompt
         return "Antwoord"
 
@@ -55,7 +55,7 @@ async def test_lege_optionele_velden_worden_weggelaten(client):
     """Optionele velden met lege waarde verschijnen niet als regel in de samengestelde prompt."""
     captured = {}
 
-    async def mock_ollama(prompt: str) -> str:
+    async def mock_ollama(prompt: str, temperature: float) -> str:
         captured["prompt"] = prompt
         return "Antwoord"
 
@@ -75,7 +75,7 @@ async def test_gedeeltelijk_optioneel_ingevuld(client):
     """Alleen ingevulde optionele velden verschijnen in de prompt; lege worden overgeslagen."""
     captured = {}
 
-    async def mock_ollama(prompt: str) -> str:
+    async def mock_ollama(prompt: str, temperature: float) -> str:
         captured["prompt"] = prompt
         return "Antwoord"
 
@@ -116,13 +116,13 @@ async def test_geen_ollama_call_bij_leeg_verplicht_veld(client):
     mock_ollama.assert_not_called()
 
 
-async def test_ollama_onbereikbaar_geeft_503(client):
-    """Achterwaartse compat story 01: Ollama niet bereikbaar → 503."""
+async def test_ollama_onbereikbaar_geeft_fout_in_run(client):
+    """Story 06: Ollama niet bereikbaar → run bevat fout-veld, aanvraag geeft 200."""
     with patch(
         "app.call_ollama",
         new_callable=AsyncMock,
         side_effect=ConnectionError("Ollama niet bereikbaar"),
     ):
         response = await client.post("/api/prompt", json=ALLE_VELDEN)
-    assert response.status_code == 503
-    assert response.json().get("detail")
+    assert response.status_code == 200
+    assert "fout" in response.json()["runs"][0]

@@ -66,7 +66,7 @@ def test_laadstatus_zichtbaar_tijdens_wachten(page: Page):
                 route.fulfill(
                     status=200,
                     content_type="application/json",
-                    body='{"response": "Antwoord"}',
+                    body='{"runs": [{"run_nummer": 1, "temperature": 0.8, "response": "Antwoord"}]}',
                 )
             except Exception:
                 # playwright sync API mag niet vanuit een andere thread worden aangeroepen
@@ -88,14 +88,14 @@ def test_antwoord_verschijnt_na_versturen(page: Page):
         lambda route: route.fulfill(
             status=200,
             content_type="application/json",
-            body='{"response": "Dit is het antwoord van Ollama"}',
+            body='{"runs": [{"run_nummer": 1, "temperature": 0.8, "response": "Dit is het antwoord van Ollama"}]}',
         ),
     )
     _vul_verplichte_velden(page)
     page.get_by_role("button", name="Verstuur").click()
 
-    expect(page.locator("[data-testid=response]")).to_be_visible()
-    expect(page.locator("[data-testid=response]")).to_contain_text("Dit is het antwoord van Ollama")
+    expect(page.locator("[data-testid=run-results]")).to_be_visible()
+    expect(page.locator("[data-testid=run-results]")).to_contain_text("Dit is het antwoord van Ollama")
 
 
 def test_ollama_fout_toont_foutmelding(page: Page):
