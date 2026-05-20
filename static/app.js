@@ -109,13 +109,31 @@ function renderRunResultaten(runs) {
   logWarningEl.classList.add('hidden');
   for (const run of runs) {
     const item = document.createElement('div');
+    item.classList.add('run-result');
     if (run.fout) {
+      item.classList.add('run-fout');
       item.textContent = `Run ${run.run_nummer}: Fout — ${run.fout}`;
     } else {
-      let tekst = `Run ${run.run_nummer} (temperature ${run.temperature}): ${run.response}`;
-      if (run.log_status === 'ok') tekst += ` [Log opgeslagen: ${run.log_path}]`;
-      if (run.log_warning) tekst += ` [Waarschuwing: ${run.log_warning}]`;
-      item.textContent = tekst;
+      const header = document.createElement('div');
+      header.classList.add('run-header');
+      header.textContent = `Run ${run.run_nummer} — temperature ${run.temperature}`;
+      if (run.log_status === 'ok') {
+        const logNote = document.createElement('span');
+        logNote.classList.add('run-log-note');
+        logNote.textContent = ` · Log: ${run.log_path}`;
+        header.appendChild(logNote);
+      }
+      if (run.log_warning) {
+        const warnNote = document.createElement('span');
+        warnNote.classList.add('run-log-warning');
+        warnNote.textContent = ` · Waarschuwing: ${run.log_warning}`;
+        header.appendChild(warnNote);
+      }
+      const body = document.createElement('div');
+      body.classList.add('run-body');
+      body.innerHTML = marked.parse(run.response || '');
+      item.appendChild(header);
+      item.appendChild(body);
     }
     runResultsEl.appendChild(item);
   }
