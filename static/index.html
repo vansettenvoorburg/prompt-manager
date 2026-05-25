@@ -4,129 +4,136 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Prompt Sessie Manager</title>
-  <link rel="stylesheet" href="/style.css">
+  <link rel="stylesheet" href="/style.css?v=2">
 </head>
 <body>
-  <main>
-    <h1>Prompt Sessie Manager</h1>
+  <div class="layout">
 
-    <form id="prompt-form">
-      <div class="veld">
-        <label for="rol">Rol <span class="verplicht">*</span></label>
-        <input type="text" id="rol" name="rol" placeholder="senior Python developer">
-        <p data-testid="validation-rol" class="validatie hidden">Vul een rol in.</p>
-      </div>
+    <aside class="sidebar">
+      <section>
+        <h2>Sessie opslaan</h2>
+        <div class="veld">
+          <label for="session-name">Sessienaam</label>
+          <input type="text" id="session-name" name="session-name" placeholder="mijn-sessie">
+          <p data-testid="validation-session-name" class="validatie hidden">Vul een sessienaam in.</p>
+        </div>
+        <button type="button" id="opslaan-knop">Opslaan</button>
 
-      <div class="veld">
-        <label for="taak">Taak <span class="verplicht">*</span></label>
-        <input type="text" id="taak" name="taak" placeholder="een REST API bouwen">
-        <p data-testid="validation-taak" class="validatie hidden">Vul een taak in.</p>
-      </div>
+        <p data-testid="save-confirmation" class="hidden"></p>
+        <p data-testid="save-error" class="hidden"></p>
 
-      <div class="veld">
-        <label for="doel">Doel <span class="verplicht">*</span></label>
-        <input type="text" id="doel" name="doel" placeholder="gebruikersdata op te slaan">
-        <p data-testid="validation-doel" class="validatie hidden">Vul een doel in.</p>
-      </div>
+        <div data-testid="overwrite-dialog" class="hidden">
+          <p>Er bestaat al een sessie met deze naam. Wilt u overschrijven?</p>
+          <button type="button" id="bevestig-overschrijven">Ja, overschrijven</button>
+          <button type="button" id="annuleer-overschrijven">Annuleren</button>
+        </div>
 
-      <div class="veld">
-        <label for="formaat">Formaat</label>
-        <input type="text" id="formaat" name="formaat" placeholder="JSON, markdown, bullet points">
-      </div>
-
-      <div class="veld">
-        <label for="stijl">Stijl</label>
-        <input type="text" id="stijl" name="stijl" placeholder="technisch, beknopt, formeel">
-      </div>
-
-      <div class="veld">
-        <label for="scope">Scope</label>
-        <input type="text" id="scope" name="scope" placeholder="backend only, één bestand">
-      </div>
-
-      <div class="veld">
-        <label for="eisen">Extra eisen</label>
-        <textarea id="eisen" name="eisen" placeholder="geen externe afhankelijkheden" rows="3"></textarea>
-      </div>
-
-      <div class="veld">
-        <label for="voorbeelden">Voorbeelden</label>
-        <textarea id="voorbeelden" name="voorbeelden" placeholder="zie bijlage, functielijst" rows="3"></textarea>
-      </div>
-
-      <div class="veld">
-        <label for="provider">Provider</label>
-        <select id="provider" name="provider" data-testid="provider-select">
-          <option value="ollama">Ollama</option>
-          <option value="groq">Groq</option>
+        <h2 class="sessies-kop">Opgeslagen sessies</h2>
+        <select data-testid="session-select">
+          <option value="">-- Kies een sessie --</option>
         </select>
-      </div>
+        <div data-testid="sessions-list">
+          <p data-testid="sessions-empty">Nog geen sessies opgeslagen.</p>
+        </div>
+        <p data-testid="load-error" class="hidden"></p>
+      </section>
+    </aside>
 
-      <div class="veld">
-        <label for="runs">Aantal runs</label>
-        <input type="number" id="runs" name="runs" data-testid="runs-input" value="1" min="1">
-      </div>
+    <main>
+      <h1>Prompt Sessie Manager</h1>
 
-      <div class="veld" data-testid="temperature-modus">
-        <label>Temperature-modus</label>
-        <label>
-          <input type="radio" name="temperature-modus" value="alle" data-testid="temperature-modus-alle" checked>
-          Één temperature voor alle runs
-        </label>
-        <label>
-          <input type="radio" name="temperature-modus" value="per_run" data-testid="temperature-modus-per-run">
-          Één temperature per run (komma-gescheiden)
-        </label>
-      </div>
+      <form id="prompt-form">
+        <div class="veld">
+          <label for="rol">Rol <span class="verplicht">*</span></label>
+          <input type="text" id="rol" name="rol" placeholder="senior Python developer">
+          <p data-testid="validation-rol" class="validatie hidden">Vul een rol in.</p>
+        </div>
 
-      <div class="veld">
-        <label for="temperature" data-testid="temperature-label">Temperature <span class="verplicht">*</span></label>
-        <input type="text" id="temperature" name="temperature" data-testid="temperature-input" value="0.8">
-      </div>
+        <div class="veld">
+          <label for="taak">Taak <span class="verplicht">*</span></label>
+          <input type="text" id="taak" name="taak" placeholder="een REST API bouwen">
+          <p data-testid="validation-taak" class="validatie hidden">Vul een taak in.</p>
+        </div>
 
-      <button type="button" id="submit">Verstuur</button>
+        <div class="veld">
+          <label for="doel">Doel <span class="verplicht">*</span></label>
+          <input type="text" id="doel" name="doel" placeholder="gebruikersdata op te slaan">
+          <p data-testid="validation-doel" class="validatie hidden">Vul een doel in.</p>
+        </div>
 
-      <div class="veld">
-        <label for="session-name">Sessienaam</label>
-        <input type="text" id="session-name" name="session-name" placeholder="mijn-sessie">
-        <p data-testid="validation-session-name" class="validatie hidden">Vul een sessienaam in.</p>
-      </div>
+        <div class="veld">
+          <label for="formaat">Formaat</label>
+          <input type="text" id="formaat" name="formaat" placeholder="JSON, markdown, bullet points">
+        </div>
 
-      <button type="button" id="opslaan-knop">Opslaan</button>
-    </form>
+        <div class="veld">
+          <label for="stijl">Stijl</label>
+          <input type="text" id="stijl" name="stijl" placeholder="technisch, beknopt, formeel">
+        </div>
 
-    <p data-testid="save-confirmation" class="hidden"></p>
-    <p data-testid="save-error" class="hidden"></p>
+        <div class="veld">
+          <label for="scope">Scope</label>
+          <input type="text" id="scope" name="scope" placeholder="backend only, één bestand">
+        </div>
 
-    <div data-testid="overwrite-dialog" class="hidden">
-      <p>Er bestaat al een sessie met deze naam. Wilt u overschrijven?</p>
-      <button type="button" id="bevestig-overschrijven">Ja, overschrijven</button>
-      <button type="button" id="annuleer-overschrijven">Annuleren</button>
-    </div>
+        <div class="veld">
+          <label for="eisen">Extra eisen</label>
+          <textarea id="eisen" name="eisen" placeholder="geen externe afhankelijkheden" rows="3"></textarea>
+        </div>
 
-    <div data-testid="loading" class="hidden">Bezig met laden...</div>
+        <div class="veld">
+          <label for="voorbeelden">Voorbeelden</label>
+          <textarea id="voorbeelden" name="voorbeelden" placeholder="zie bijlage, functielijst" rows="3"></textarea>
+        </div>
 
-    <p data-testid="log-status" class="hidden"></p>
-    <p data-testid="log-warning" class="hidden"></p>
+        <div class="veld">
+          <label for="provider">Provider</label>
+          <select id="provider" name="provider" data-testid="provider-select">
+            <option value="ollama">Ollama</option>
+            <option value="groq">Groq</option>
+          </select>
+        </div>
 
-    <div data-testid="response" class="hidden"></div>
+        <div class="veld">
+          <label for="runs">Aantal runs</label>
+          <input type="number" id="runs" name="runs" data-testid="runs-input" value="1" min="1">
+        </div>
 
-    <div data-testid="run-results" class="hidden"></div>
+        <div class="veld" data-testid="temperature-modus">
+          <label>Temperature-modus</label>
+          <label>
+            <input type="radio" name="temperature-modus" value="alle" data-testid="temperature-modus-alle" checked>
+            Één temperature voor alle runs
+          </label>
+          <label>
+            <input type="radio" name="temperature-modus" value="per_run" data-testid="temperature-modus-per-run">
+            Één temperature per run (komma-gescheiden)
+          </label>
+        </div>
 
-    <div data-testid="error" class="hidden"></div>
+        <div class="veld">
+          <label for="temperature" data-testid="temperature-label">Temperature <span class="verplicht">*</span></label>
+          <input type="text" id="temperature" name="temperature" data-testid="temperature-input" value="0.8">
+        </div>
 
-    <section>
-      <h2>Opgeslagen sessies</h2>
-      <select data-testid="session-select">
-        <option value="">-- Kies een sessie --</option>
-      </select>
-      <div data-testid="sessions-list">
-        <p data-testid="sessions-empty">Nog geen sessies opgeslagen.</p>
-      </div>
-      <p data-testid="load-error" class="hidden"></p>
-    </section>
-  </main>
+        <button type="button" id="submit">Verstuur</button>
+      </form>
 
-  <script src="/app.js"></script>
+      <div data-testid="loading" class="hidden">Bezig met laden...</div>
+
+      <p data-testid="log-status" class="hidden"></p>
+      <p data-testid="log-warning" class="hidden"></p>
+
+      <div data-testid="response" class="hidden"></div>
+
+      <div data-testid="run-results" class="hidden"></div>
+
+      <div data-testid="error" class="hidden"></div>
+
+    </main>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <script src="/app.js?v=2"></script>
 </body>
 </html>
