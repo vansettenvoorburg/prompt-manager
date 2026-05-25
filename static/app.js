@@ -120,7 +120,7 @@ function renderRunResultaten(runs) {
       if (run.log_status === 'ok') {
         const logNote = document.createElement('span');
         logNote.classList.add('run-log-note');
-        logNote.textContent = ` · Log: ${run.log_path}`;
+        logNote.textContent = ` · Log opgeslagen: ${run.log_path}`;
         header.appendChild(logNote);
       }
       if (run.log_warning) {
@@ -204,6 +204,7 @@ async function laadSessiesLijst() {
 
 async function laadSessie(naam) {
   laadFoutEl.classList.add('hidden');
+  sessieNaamInput.value = naam;
   if (sessieCache[naam]) {
     _pasSessieToe(sessieCache[naam]);
     return;
