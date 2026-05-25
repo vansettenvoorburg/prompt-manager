@@ -116,6 +116,18 @@
           <input type="text" id="temperature" name="temperature" data-testid="temperature-input" value="0.8">
         </div>
 
+        <div class="veld">
+          <label>Bijlage</label>
+          <div class="bijlage-rij">
+            <label class="bijlage-knop-label">
+              Kies bestand
+              <input type="file" id="bijlage-input" data-testid="bijlage-input" style="display:none">
+            </label>
+            <span data-testid="bijlage-status" id="bijlage-status">Geen bijlage</span>
+            <button type="button" data-testid="bijlage-verwijder" id="bijlage-verwijder" style="display:none">×</button>
+          </div>
+        </div>
+
         <button type="button" id="submit">Verstuur</button>
       </form>
 
