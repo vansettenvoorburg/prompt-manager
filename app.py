@@ -1,3 +1,4 @@
+import io
 import json
 import os
 import re
@@ -6,9 +7,10 @@ import uvicorn
 from datetime import datetime, timezone
 from pathlib import Path
 from dotenv import load_dotenv
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, File, Form, HTTPException, Request, UploadFile
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
+from typing import Annotated
 
 load_dotenv()
 
@@ -20,6 +22,22 @@ GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
 GROQ_MODEL = os.getenv("GROQ_MODEL", "llama3-8b-8192")
 SESSIONS_DIR = Path("sessions")
 LOGS_DIR = Path.home() / "Documents" / "PromptSessieManager" / "logs"
+
+
+_TEKST_EXTENSIES = {".txt", ".md", ".py", ".js", ".ts", ".html", ".css", ".json"}
+_ONDERSTEUNDE_EXTENSIES = _TEKST_EXTENSIES | {".pdf", ".docx"}
+
+
+def extract_pdf_text(content: bytes) -> str:
+    import fitz
+    doc = fitz.open(stream=content, filetype="pdf")
+    return "\n".join(page.get_text() for page in doc)
+
+
+def extract_docx_text(content: bytes) -> str:
+    from docx import Document
+    doc = Document(io.BytesIO(content))
+    return "\n".join(para.text for para in doc.paragraphs)
 
 
 class SessionRequest(BaseModel):
@@ -37,6 +55,7 @@ class SessionRequest(BaseModel):
     runs: int = 1
     temperature_modus: str = "alle"
     temperatures: list[float] = []
+    bijlage_bestandsnaam: str | None = None
 
 
 class PromptRequest(BaseModel):
@@ -64,15 +83,17 @@ _OPTIONELE_LABELS = [
 ]
 
 
-def bouw_prompt(body: PromptRequest) -> str:
+def bouw_prompt(body: PromptRequest, bijlage_tekst: str | None = None) -> str:
     regels = [f"Als {body.rol} wil ik {body.taak} zodat {body.doel}."]
     for attribuut, label in _OPTIONELE_LABELS:
         if waarde := getattr(body, attribuut):
             regels.append(f"{label}: {waarde}")
+    if bijlage_tekst:
+        regels.append(f"Bijlage:\n{bijlage_tekst}")
     return "\n".join(regels)
 
 
-def _schrijf_log(body: PromptRequest, prompt_tekst: str, antwoord: str, start: datetime, duur: float, model: str, run_nummer: int, temperature: float):
+def _schrijf_log(body: PromptRequest, prompt_tekst: str, antwoord: str, start: datetime, duur: float, model: str, run_nummer: int, temperature: float, bijlage_bestandsnaam: str | None = None, bijlage_tekst: str | None = None):
     provider = body.provider.lower()
     sessie = body.sessie.strip() or "geen-sessie"
     timestamp = start.strftime("%Y-%m-%dT%H:%M:%S")
@@ -98,6 +119,8 @@ def _schrijf_log(body: PromptRequest, prompt_tekst: str, antwoord: str, start: d
         "request": prompt_tekst,
         "response": antwoord,
         "duur_seconden": round(duur, 3),
+        "bijlage_bestandsnaam": bijlage_bestandsnaam,
+        "bijlage_tekst": bijlage_tekst,
     }
     try:
         LOGS_DIR.mkdir(parents=True, exist_ok=True)
@@ -149,8 +172,11 @@ async def call_groq(prompt: str, temperature: float) -> str:
             raise ConnectionError("Groq niet bereikbaar") from exc
 
 
-@app.post("/api/prompt")
-async def handle_prompt(body: PromptRequest):
+async def _voer_prompt_uit(
+    body: PromptRequest,
+    bijlage_bestandsnaam: str | None = None,
+    bijlage_tekst: str | None = None,
+):
     ontbrekend = [v for v in ("rol", "taak", "doel") if not getattr(body, v).strip()]
     if ontbrekend:
         raise HTTPException(
@@ -181,7 +207,7 @@ async def handle_prompt(body: PromptRequest):
             detail="Groq API key ontbreekt — stel GROQ_API_KEY in via .env",
         )
 
-    prompt = bouw_prompt(body)
+    prompt = bouw_prompt(body, bijlage_tekst)
     resultaten = []
 
     for i in range(1, body.runs + 1):
@@ -197,7 +223,7 @@ async def handle_prompt(body: PromptRequest):
                 model = OLLAMA_MODEL
 
             duur = (datetime.now() - start).total_seconds()
-            log_pad, log_warning = _schrijf_log(body, prompt, result, start, duur, model, i, temperature)
+            log_pad, log_warning = _schrijf_log(body, prompt, result, start, duur, model, i, temperature, bijlage_bestandsnaam, bijlage_tekst)
 
             run_result: dict = {"run_nummer": i, "temperature": temperature, "response": result}
             if log_warning:
@@ -211,6 +237,81 @@ async def handle_prompt(body: PromptRequest):
             resultaten.append({"run_nummer": i, "fout": str(exc)})
 
     return {"runs": resultaten}
+
+
+@app.post("/api/prompt")
+async def handle_prompt(body: PromptRequest):
+    return await _voer_prompt_uit(body)
+
+
+@app.post("/api/prompt/upload")
+async def handle_prompt_upload(
+    bijlage: Annotated[UploadFile, File()],
+    rol: Annotated[str, Form()] = "",
+    taak: Annotated[str, Form()] = "",
+    doel: Annotated[str, Form()] = "",
+    formaat: Annotated[str, Form()] = "",
+    stijl: Annotated[str, Form()] = "",
+    scope: Annotated[str, Form()] = "",
+    eisen: Annotated[str, Form()] = "",
+    voorbeelden: Annotated[str, Form()] = "",
+    sessie: Annotated[str, Form()] = "",
+    provider: Annotated[str, Form()] = "ollama",
+    runs: Annotated[str, Form()] = "1",
+    temperature_modus: Annotated[str, Form()] = "alle",
+    temperatures: Annotated[str, Form()] = "[]",
+):
+    bijlage_bestandsnaam = bijlage.filename
+    extensie = Path(bijlage_bestandsnaam).suffix.lower() if bijlage_bestandsnaam else ""
+
+    if extensie not in _ONDERSTEUNDE_EXTENSIES:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Niet-ondersteund bestandstype: {extensie} — gebruik .txt, .md, .py, .js, .ts, .html, .css, .json, .pdf of .docx",
+        )
+
+    inhoud = await bijlage.read()
+
+    if not inhoud:
+        raise HTTPException(
+            status_code=400,
+            detail="Bijlage is leeg — upload een bestand met inhoud",
+        )
+
+    if extensie == ".pdf":
+        try:
+            bijlage_tekst = extract_pdf_text(inhoud)
+        except Exception as exc:
+            raise HTTPException(status_code=422, detail=f"Bijlage kon niet worden gelezen: {exc}")
+    elif extensie == ".docx":
+        try:
+            bijlage_tekst = extract_docx_text(inhoud)
+        except Exception as exc:
+            raise HTTPException(status_code=422, detail=f"Bijlage kon niet worden gelezen: {exc}")
+    else:
+        bijlage_tekst = inhoud.decode("utf-8", errors="replace")
+
+    try:
+        runs_int = int(runs)
+    except (ValueError, TypeError):
+        runs_int = 1
+    try:
+        temps_parsed = json.loads(temperatures)
+        temperatures_list = temps_parsed if isinstance(temps_parsed, list) else [float(temps_parsed)]
+    except (json.JSONDecodeError, TypeError, ValueError):
+        temperatures_list = []
+
+    prompt_body = PromptRequest(
+        rol=rol, taak=taak, doel=doel,
+        formaat=formaat, stijl=stijl, scope=scope,
+        eisen=eisen, voorbeelden=voorbeelden,
+        sessie=sessie, provider=provider,
+        runs=runs_int,
+        temperature_modus=temperature_modus,
+        temperatures=temperatures_list,
+    )
+
+    return await _voer_prompt_uit(prompt_body, bijlage_bestandsnaam, bijlage_tekst)
 
 
 def _valideer_sessienaam(name: str) -> None:
@@ -244,6 +345,7 @@ async def save_session(body: SessionRequest):
         "runs": body.runs,
         "temperature_modus": body.temperature_modus,
         "temperatures": body.temperatures,
+        "bijlage_bestandsnaam": body.bijlage_bestandsnaam,
     }
     try:
         path.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")

@@ -6,6 +6,10 @@ const logStatusEl = document.querySelector('[data-testid="log-status"]');
 const logWarningEl = document.querySelector('[data-testid="log-warning"]');
 const runResultsEl = document.querySelector('[data-testid="run-results"]');
 
+const bijlageInputEl = document.getElementById('bijlage-input');
+const bijlageStatusEl = document.getElementById('bijlage-status');
+const bijlageVerwijderEl = document.getElementById('bijlage-verwijder');
+
 const opslaanKnop = document.getElementById('opslaan-knop');
 const sessieNaamInput = document.querySelector('[name="session-name"]');
 const bevestigingEl = document.querySelector('[data-testid="save-confirmation"]');
@@ -184,6 +188,14 @@ function _pasSessieToe(data) {
     temperatureInputEl.value = data.temperatures.join(', ');
     temperatureHandmatigGewijzigd = true;
   }
+  if (data.bijlage_bestandsnaam) {
+    bijlageStatusEl.textContent = `${data.bijlage_bestandsnaam} (niet opnieuw geladen — upload indien nodig opnieuw)`;
+    bijlageVerwijderEl.style.display = '';
+  } else if ('bijlage_bestandsnaam' in data) {
+    bijlageStatusEl.textContent = 'Geen bijlage';
+    bijlageVerwijderEl.style.display = 'none';
+    bijlageInputEl.value = '';
+  }
 }
 
 async function laadSessiesLijst() {
@@ -251,6 +263,7 @@ async function slaOp(force = false) {
   body.runs = runs;
   body.temperature_modus = modus;
   body.temperatures = temperaturesArray;
+  body.bijlage_bestandsnaam = bijlageInputEl.files.length > 0 ? bijlageInputEl.files[0].name : null;
 
   try {
     const res = await fetch('/api/sessions', {
@@ -301,6 +314,22 @@ sessionSelectEl.addEventListener('change', () => {
   if (naam) laadSessie(naam);
 });
 
+bijlageInputEl.addEventListener('change', () => {
+  if (bijlageInputEl.files.length > 0) {
+    bijlageStatusEl.textContent = bijlageInputEl.files[0].name;
+    bijlageVerwijderEl.style.display = '';
+  } else {
+    bijlageStatusEl.textContent = 'Geen bijlage';
+    bijlageVerwijderEl.style.display = 'none';
+  }
+});
+
+bijlageVerwijderEl.addEventListener('click', () => {
+  bijlageInputEl.value = '';
+  bijlageStatusEl.textContent = 'Geen bijlage';
+  bijlageVerwijderEl.style.display = 'none';
+});
+
 laadSessiesLijst();
 
 button.addEventListener('click', async () => {
@@ -313,24 +342,40 @@ button.addEventListener('click', async () => {
   const tempWaarde = temperatureInputEl.value.trim();
   const temperaturesArray = _parseTemperatures(tempWaarde, modus);
 
-  const body = {};
-  body.provider = providerSelectEl ? providerSelectEl.value : 'ollama';
+  const veldWaarden = {};
+  veldWaarden.provider = providerSelectEl ? providerSelectEl.value : 'ollama';
   for (const veld of ALLE_VELDEN) {
-    body[veld] = document.querySelector(`[name="${veld}"]`).value.trim();
+    veldWaarden[veld] = document.querySelector(`[name="${veld}"]`).value.trim();
   }
-  body.sessie = sessieNaamInput.value.trim();
-  body.runs = runs;
-  body.temperature_modus = modus;
-  body.temperatures = temperaturesArray;
+  veldWaarden.sessie = sessieNaamInput.value.trim();
+  veldWaarden.runs = runs;
+  veldWaarden.temperature_modus = modus;
+  veldWaarden.temperatures = temperaturesArray;
+
+  const heeftBijlage = bijlageInputEl.files.length > 0;
+  let fetchOpties;
+  let promptUrl;
+  if (heeftBijlage) {
+    const fd = new FormData();
+    for (const [k, v] of Object.entries(veldWaarden)) {
+      fd.append(k, Array.isArray(v) ? JSON.stringify(v) : String(v));
+    }
+    fd.append('bijlage', bijlageInputEl.files[0]);
+    fetchOpties = { method: 'POST', body: fd };
+    promptUrl = '/api/prompt/upload';
+  } else {
+    fetchOpties = {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(veldWaarden),
+    };
+    promptUrl = '/api/prompt';
+  }
 
   loadingEl.classList.remove('hidden');
 
   try {
-    const response = await fetch('/api/prompt', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
-    });
+    const response = await fetch(promptUrl, fetchOpties);
 
     loadingEl.classList.add('hidden');
 
