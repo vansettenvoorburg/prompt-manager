@@ -9,7 +9,7 @@ from pathlib import Path
 from dotenv import load_dotenv
 from fastapi import FastAPI, File, Form, HTTPException, Request, UploadFile
 from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel
+from pydantic import BaseModel, ValidationError
 from typing import Annotated
 
 load_dotenv()
@@ -40,6 +40,13 @@ def extract_docx_text(content: bytes) -> str:
     return "\n".join(para.text for para in doc.paragraphs)
 
 
+class ReviewerConfig(BaseModel):
+    rol: str
+    omschrijving: str
+    runs: int = 1
+    temperatures: list[float] = []
+
+
 class SessionRequest(BaseModel):
     name: str
     rol: str = ""
@@ -56,6 +63,8 @@ class SessionRequest(BaseModel):
     temperature_modus: str = "alle"
     temperatures: list[float] = []
     bijlage_bestandsnaam: str | None = None
+    reviewers: list[ReviewerConfig] = []
+    review_modus: str = "iteratief"
 
 
 class PromptRequest(BaseModel):
@@ -72,6 +81,8 @@ class PromptRequest(BaseModel):
     runs: int = 1
     temperature_modus: str = "alle"
     temperatures: list[float] = []
+    reviewers: list[ReviewerConfig] = []
+    review_modus: str = "iteratief"
 
 
 _OPTIONELE_LABELS = [
@@ -91,6 +102,44 @@ def bouw_prompt(body: PromptRequest, bijlage_tekst: str | None = None) -> str:
     if bijlage_tekst:
         regels.append(f"Bijlage:\n{bijlage_tekst}")
     return "\n".join(regels)
+
+
+def bouw_reviewer_prompt(
+    reviewer_rol: str,
+    reviewer_omschrijving: str,
+    body: PromptRequest,
+    vorige_output: str,
+    review_modus: str,
+    bijlage_tekst: str | None = None,
+) -> str:
+    header_regels = [
+        f"Je bent {reviewer_rol}.",
+        f"Reviewfocus: {reviewer_omschrijving}",
+    ]
+    if review_modus == "iteratief":
+        header_regels.append(
+            "TAAK: Herschrijf de volledige tekst hieronder zodat deze verbeterd is op basis van je reviewfocus.\n"
+            "REGELS:\n"
+            "- Geef ALLEEN de verbeterde, volledige tekst terug — niets anders.\n"
+            "- Begin direct met de inhoud, zonder inleiding of afsluiting.\n"
+            "- Voeg geen commentaar, feedback, uitleg of wijzigingsmarkering toe.\n"
+            "- Laat ongewijzigde delen intact in de output."
+        )
+
+    context_regels = []
+    for attribuut, label in _OPTIONELE_LABELS:
+        if waarde := getattr(body, attribuut):
+            context_regels.append(f"{label}: {waarde}")
+    if bijlage_tekst:
+        context_regels.append(f"Bijlage:\n{bijlage_tekst}")
+
+    delen = ["\n".join(header_regels)]
+    if context_regels:
+        delen.append("Originele eisen:\n" + "\n".join(context_regels))
+    delen.append(f"Te verbeteren tekst:\n{vorige_output}")
+    if review_modus == "iteratief":
+        delen.append("Verbeterde tekst:")
+    return "\n\n".join(delen)
 
 
 def _schrijf_log(body: PromptRequest, prompt_tekst: str, antwoord: str, start: datetime, duur: float, model: str, run_nummer: int, temperature: float, bijlage_bestandsnaam: str | None = None, bijlage_tekst: str | None = None):
@@ -121,6 +170,40 @@ def _schrijf_log(body: PromptRequest, prompt_tekst: str, antwoord: str, start: d
         "duur_seconden": round(duur, 3),
         "bijlage_bestandsnaam": bijlage_bestandsnaam,
         "bijlage_tekst": bijlage_tekst,
+    }
+    try:
+        LOGS_DIR.mkdir(parents=True, exist_ok=True)
+    except OSError as exc:
+        return None, f"Logmap aanmaken mislukt: {exc}"
+    pad = LOGS_DIR / bestandsnaam
+    try:
+        pad.write_text(
+            json.dumps(log_data, ensure_ascii=False, indent=2), encoding="utf-8"
+        )
+    except OSError as exc:
+        return None, f"Logbestand schrijven mislukt: {exc}"
+    return pad, None
+
+
+def _schrijf_reviewer_log(body: PromptRequest, reviewer_nr: int, reviewer_rol: str, reviewer_omschrijving: str, run_nummer: int, temperature: float, prompt_tekst: str, antwoord: str, start: datetime, duur: float, model: str):
+    provider = body.provider.lower()
+    sessie = body.sessie.strip() or "geen-sessie"
+    timestamp = start.strftime("%Y-%m-%dT%H:%M:%S")
+    datum_tijd = start.strftime("%Y-%m-%d_%H-%M-%S-%f")
+    bestandsnaam = f"{datum_tijd}_{provider}_{sessie}_reviewer{reviewer_nr}_run{run_nummer}_t{temperature:g}.json"
+    log_data = {
+        "timestamp": timestamp,
+        "provider": provider,
+        "model": model,
+        "sessie": sessie,
+        "reviewer_nr": reviewer_nr,
+        "reviewer_rol": reviewer_rol,
+        "reviewer_omschrijving": reviewer_omschrijving,
+        "run_nummer": run_nummer,
+        "temperature": temperature,
+        "request": prompt_tekst,
+        "response": antwoord,
+        "duur_seconden": round(duur, 3),
     }
     try:
         LOGS_DIR.mkdir(parents=True, exist_ok=True)
@@ -236,11 +319,144 @@ async def _voer_prompt_uit(
         except ConnectionError as exc:
             resultaten.append({"run_nummer": i, "fout": str(exc)})
 
-    return {"runs": resultaten}
+    if not body.reviewers:
+        return {"runs": resultaten}
+
+    laatste_output = next(
+        (r["response"] for r in reversed(resultaten) if "response" in r), ""
+    )
+    reviewer_stappen = []
+    vorige_output = laatste_output
+
+    for reviewer_nr, reviewer in enumerate(body.reviewers, start=1):
+        for run_nummer in range(1, reviewer.runs + 1):
+            if reviewer.temperatures:
+                temperature = reviewer.temperatures[run_nummer - 1] if run_nummer <= len(reviewer.temperatures) else reviewer.temperatures[0]
+            else:
+                temperature = 0.7
+            reviewer_prompt = bouw_reviewer_prompt(
+                reviewer.rol, reviewer.omschrijving, body, vorige_output,
+                body.review_modus, bijlage_tekst,
+            )
+            start = datetime.now()
+            try:
+                if provider == "groq":
+                    result = await call_groq(reviewer_prompt, temperature)
+                    model = GROQ_MODEL
+                else:
+                    result = await call_ollama(reviewer_prompt, temperature)
+                    model = OLLAMA_MODEL
+
+                duur = (datetime.now() - start).total_seconds()
+                log_pad, log_warning = _schrijf_reviewer_log(
+                    body, reviewer_nr, reviewer.rol, reviewer.omschrijving, run_nummer, temperature,
+                    reviewer_prompt, result, start, duur, model,
+                )
+
+                stap: dict = {
+                    "reviewer_nr": reviewer_nr,
+                    "reviewer_rol": reviewer.rol,
+                    "run_nummer": run_nummer,
+                    "temperature": temperature,
+                    "response": result,
+                }
+                if log_warning:
+                    stap["log_warning"] = log_warning
+                else:
+                    stap["log_status"] = "ok"
+                    stap["log_path"] = str(log_pad)
+                reviewer_stappen.append(stap)
+                vorige_output = result
+
+            except ConnectionError as exc:
+                reviewer_stappen.append({
+                    "reviewer_nr": reviewer_nr,
+                    "reviewer_rol": reviewer.rol,
+                    "run_nummer": run_nummer,
+                    "fout": str(exc),
+                })
+
+    return {"runs": resultaten, "reviewer_stappen": reviewer_stappen, "eindoutput": vorige_output}
 
 
 @app.post("/api/prompt")
-async def handle_prompt(body: PromptRequest):
+async def handle_prompt(request: Request):
+    content_type = request.headers.get("content-type", "")
+    if "multipart/form-data" in content_type:
+        form_data = await request.form()
+        bijlage = form_data.get("bijlage")
+        bijlage_bestandsnaam = None
+        bijlage_tekst = None
+
+        if bijlage is not None and hasattr(bijlage, "filename"):
+            bijlage_bestandsnaam = bijlage.filename
+            extensie = Path(bijlage_bestandsnaam).suffix.lower() if bijlage_bestandsnaam else ""
+            if extensie not in _ONDERSTEUNDE_EXTENSIES:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Niet-ondersteund bestandstype: {extensie} — gebruik .txt, .md, .py, .js, .ts, .html, .css, .json, .pdf of .docx",
+                )
+            inhoud = await bijlage.read()
+            if not inhoud:
+                raise HTTPException(
+                    status_code=400,
+                    detail="Bijlage is leeg — upload een bestand met inhoud",
+                )
+            if extensie == ".pdf":
+                try:
+                    bijlage_tekst = extract_pdf_text(inhoud)
+                except Exception as exc:
+                    raise HTTPException(status_code=422, detail=f"Bijlage kon niet worden gelezen: {exc}")
+            elif extensie == ".docx":
+                try:
+                    bijlage_tekst = extract_docx_text(inhoud)
+                except Exception as exc:
+                    raise HTTPException(status_code=422, detail=f"Bijlage kon niet worden gelezen: {exc}")
+            else:
+                bijlage_tekst = inhoud.decode("utf-8", errors="replace")
+
+        try:
+            runs_int = int(form_data.get("runs", "1"))
+        except (ValueError, TypeError):
+            runs_int = 1
+        temperatures_str = form_data.get("temperatures", "[]")
+        try:
+            temps_parsed = json.loads(temperatures_str)
+            temperatures_list = temps_parsed if isinstance(temps_parsed, list) else [float(temps_parsed)]
+        except (json.JSONDecodeError, TypeError, ValueError):
+            temperatures_list = []
+
+        reviewers_str = form_data.get("reviewers", "[]")
+        try:
+            reviewers_data = json.loads(reviewers_str)
+            reviewers_list = [ReviewerConfig(**r) for r in reviewers_data] if isinstance(reviewers_data, list) else []
+        except (json.JSONDecodeError, TypeError, ValueError):
+            reviewers_list = []
+
+        body = PromptRequest(
+            rol=form_data.get("rol", ""),
+            taak=form_data.get("taak", ""),
+            doel=form_data.get("doel", ""),
+            formaat=form_data.get("formaat", ""),
+            stijl=form_data.get("stijl", ""),
+            scope=form_data.get("scope", ""),
+            eisen=form_data.get("eisen", ""),
+            voorbeelden=form_data.get("voorbeelden", ""),
+            sessie=form_data.get("sessie", ""),
+            provider=form_data.get("provider", "ollama"),
+            runs=runs_int,
+            temperature_modus=form_data.get("temperature_modus", "alle"),
+            temperatures=temperatures_list,
+            reviewers=reviewers_list,
+            review_modus=form_data.get("review_modus", "iteratief"),
+        )
+        return await _voer_prompt_uit(body, bijlage_bestandsnaam, bijlage_tekst)
+
+    body_data = await request.json()
+    try:
+        body = PromptRequest(**body_data)
+    except ValidationError as exc:
+        raise HTTPException(status_code=422, detail=exc.errors())
     return await _voer_prompt_uit(body)
 
 
@@ -346,6 +562,8 @@ async def save_session(body: SessionRequest):
         "temperature_modus": body.temperature_modus,
         "temperatures": body.temperatures,
         "bijlage_bestandsnaam": body.bijlage_bestandsnaam,
+        "reviewers": [r.model_dump() for r in body.reviewers],
+        "review_modus": body.review_modus,
     }
     try:
         path.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")

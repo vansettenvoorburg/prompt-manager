@@ -1,8 +1,54 @@
-import pytest
+import subprocess
+import sys
+import time
+
 import httpx
+import pytest
 from httpx import AsyncClient, ASGITransport
 
-LIVE_BASE_URL = "http://localhost:3000"
+BASE_URL = "http://localhost:3000"
+_server_process = None
+
+
+def _server_is_running() -> bool:
+    try:
+        httpx.get(f"{BASE_URL}/api/sessions", timeout=2.0)
+        return True
+    except Exception:
+        return False
+
+
+def _wait_for_server(timeout: int = 15) -> None:
+    deadline = time.time() + timeout
+    while time.time() < deadline:
+        if _server_is_running():
+            return
+        time.sleep(0.5)
+    raise RuntimeError(f"Server niet bereikbaar op {BASE_URL} na {timeout} seconden.")
+
+
+@pytest.fixture(scope="session", autouse=True)
+def server():
+    """Start de server als die nog niet draait. Stopt hem na de sessie als wij hem gestart hebben."""
+    global _server_process
+
+    if _server_is_running():
+        yield
+        return
+
+    _server_process = subprocess.Popen(
+        [sys.executable, "app.py"],
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+    )
+
+    try:
+        _wait_for_server()
+        yield
+    finally:
+        _server_process.terminate()
+        _server_process.wait()
+        _server_process = None
 
 
 @pytest.fixture
@@ -15,9 +61,5 @@ async def client():
 @pytest.fixture
 async def live_client():
     """Echte HTTP-client die via het netwerk communiceert met de draaiende server."""
-    async with AsyncClient(base_url=LIVE_BASE_URL, timeout=15.0) as c:
-        try:
-            await c.get("/api/sessions")
-        except httpx.ConnectError:
-            pytest.skip(f"Server niet bereikbaar op {LIVE_BASE_URL} — start de app eerst")
+    async with AsyncClient(base_url=BASE_URL, timeout=15.0) as c:
         yield c
