@@ -109,21 +109,28 @@ Na de hoofdprompt kun je één of meerdere reviewers toevoegen. Elke reviewer kr
 De reviewprompt heeft een vaste structuur:
 
 ```
-Review het meegestuurde resultaat in de rol van [rol].
-Te reviewen tekst: [output vorige stap]
+Je bent [rol].
+Reviewfocus: [omschrijving]
+
+Te reviewen tekst:
+[output vorige stap]
 ```
 
-Voorbeeld met twee reviewers, elk met eigen aantal runs en temperature:
+Elke reviewer heeft een rol (het perspectief) en een omschrijving (wat concreet gecontroleerd of verbeterd moet worden). Beide zijn verplicht. Zonder omschrijving is de reviewprompt te vaag om bruikbaar te zijn.
+
+Voorbeeld met twee reviewers, elk met eigen rol, omschrijving, aantal runs en temperature:
 
 ```json
 "reviewers": [
   {
     "rol": "kritische QA engineer",
+    "omschrijving": "Controleer op volledigheid, ontbrekende randgevallen en correctheid van de uitleg.",
     "runs": 2,
     "temperatures": [0.5, 0.8]
   },
   {
     "rol": "senior developer met focus op leesbaarheid",
+    "omschrijving": "Verbeter de structuur en formulering zodat de tekst helder en bondig is.",
     "runs": 1,
     "temperatures": [0.7]
   }

@@ -5,6 +5,11 @@ const errorEl = document.querySelector('[data-testid="error"]');
 const logStatusEl = document.querySelector('[data-testid="log-status"]');
 const logWarningEl = document.querySelector('[data-testid="log-warning"]');
 const runResultsEl = document.querySelector('[data-testid="run-results"]');
+const reviewerStappenListEl = document.querySelector('[data-testid="reviewer-stappen-lijst"]');
+const eindoutputEl = document.querySelector('[data-testid="eindoutput"]');
+const reviewerToevoegenKnop = document.getElementById('reviewer-toevoegen');
+const reviewerLijstEl = document.getElementById('reviewer-lijst');
+const reviewModusSelectEl = document.querySelector('[data-testid="review-modus-select"]');
 
 const bijlageInputEl = document.getElementById('bijlage-input');
 const bijlageStatusEl = document.getElementById('bijlage-status');
@@ -45,6 +50,85 @@ function hideAll() {
   logStatusEl.classList.add('hidden');
   logWarningEl.classList.add('hidden');
   runResultsEl.classList.add('hidden');
+  reviewerStappenListEl.classList.add('hidden');
+  eindoutputEl.classList.add('hidden');
+}
+
+function maakReviewerItem() {
+  const item = document.createElement('div');
+  item.setAttribute('data-testid', 'reviewer-item');
+  item.classList.add('reviewer-item');
+
+  const rolInput = document.createElement('input');
+  rolInput.type = 'text';
+  rolInput.setAttribute('data-testid', 'reviewer-rol');
+  rolInput.placeholder = 'Reviewerrol (bijv. kritische QA engineer)';
+
+  const omschrijvingInput = document.createElement('textarea');
+  omschrijvingInput.setAttribute('data-testid', 'reviewer-omschrijving');
+  omschrijvingInput.placeholder = 'Wat moet de reviewer controleren of verbeteren?';
+  omschrijvingInput.rows = 2;
+
+  const runsInput = document.createElement('input');
+  runsInput.type = 'number';
+  runsInput.setAttribute('data-testid', 'reviewer-runs');
+  runsInput.value = '1';
+  runsInput.min = '1';
+
+  const tempInput = document.createElement('input');
+  tempInput.type = 'text';
+  tempInput.setAttribute('data-testid', 'reviewer-temperatures');
+  tempInput.placeholder = 'Temperatures (bijv. 0.7)';
+  tempInput.value = '0.7';
+
+  const verwijderKnop = document.createElement('button');
+  verwijderKnop.type = 'button';
+  verwijderKnop.setAttribute('data-testid', 'reviewer-verwijder');
+  verwijderKnop.textContent = 'Verwijder';
+  verwijderKnop.addEventListener('click', () => item.remove());
+
+  item.appendChild(rolInput);
+  item.appendChild(omschrijvingInput);
+  item.appendChild(runsInput);
+  item.appendChild(tempInput);
+  item.appendChild(verwijderKnop);
+  return item;
+}
+
+function _leesReviewers() {
+  return Array.from(reviewerLijstEl.querySelectorAll('[data-testid="reviewer-item"]')).map(item => {
+    const rol = item.querySelector('[data-testid="reviewer-rol"]').value.trim();
+    const omschrijving = item.querySelector('[data-testid="reviewer-omschrijving"]').value.trim();
+    const runs = parseInt(item.querySelector('[data-testid="reviewer-runs"]').value, 10) || 1;
+    const tempWaarde = item.querySelector('[data-testid="reviewer-temperatures"]').value.trim();
+    const temperatures = tempWaarde
+      ? tempWaarde.split(',').map(s => parseFloat(s.trim())).filter(n => !isNaN(n))
+      : [0.7];
+    return { rol, omschrijving, runs, temperatures };
+  });
+}
+
+function renderReviewerStappen(stappen) {
+  reviewerStappenListEl.innerHTML = '';
+  for (const stap of stappen) {
+    const item = document.createElement('div');
+    item.setAttribute('data-testid', 'reviewer-stap-item');
+    item.classList.add('reviewer-stap');
+    if (stap.fout) {
+      item.textContent = `Reviewer ${stap.reviewer_nr} run ${stap.run_nummer}: Fout — ${stap.fout}`;
+    } else {
+      const header = document.createElement('div');
+      header.classList.add('run-header');
+      header.textContent = `Reviewer ${stap.reviewer_nr} (${stap.reviewer_rol}) — run ${stap.run_nummer} — temperature ${stap.temperature}`;
+      const body = document.createElement('div');
+      body.classList.add('run-body');
+      body.innerHTML = marked.parse(stap.response || '');
+      item.appendChild(header);
+      item.appendChild(body);
+    }
+    reviewerStappenListEl.appendChild(item);
+  }
+  reviewerStappenListEl.classList.remove('hidden');
 }
 
 function _getModus() {
@@ -196,6 +280,20 @@ function _pasSessieToe(data) {
     bijlageVerwijderEl.style.display = 'none';
     bijlageInputEl.value = '';
   }
+
+  reviewerLijstEl.innerHTML = '';
+  const reviewers = data.reviewers || [];
+  for (const r of reviewers) {
+    const item = maakReviewerItem();
+    item.querySelector('[data-testid="reviewer-rol"]').value = r.rol || '';
+    item.querySelector('[data-testid="reviewer-omschrijving"]').value = r.omschrijving || '';
+    item.querySelector('[data-testid="reviewer-runs"]').value = String(r.runs || 1);
+    item.querySelector('[data-testid="reviewer-temperatures"]').value = (r.temperatures || []).join(', ');
+    reviewerLijstEl.appendChild(item);
+  }
+  if (data.review_modus && reviewModusSelectEl) {
+    reviewModusSelectEl.value = data.review_modus;
+  }
 }
 
 async function laadSessiesLijst() {
@@ -264,6 +362,8 @@ async function slaOp(force = false) {
   body.temperature_modus = modus;
   body.temperatures = temperaturesArray;
   body.bijlage_bestandsnaam = bijlageInputEl.files.length > 0 ? bijlageInputEl.files[0].name : null;
+  body.reviewers = _leesReviewers();
+  body.review_modus = reviewModusSelectEl ? reviewModusSelectEl.value : 'iteratief';
 
   try {
     const res = await fetch('/api/sessions', {
@@ -292,6 +392,10 @@ async function slaOp(force = false) {
     opslaanFoutEl.classList.remove('hidden');
   }
 }
+
+reviewerToevoegenKnop.addEventListener('click', () => {
+  reviewerLijstEl.appendChild(maakReviewerItem());
+});
 
 providerSelectEl.addEventListener('change', () => {
   if (!temperatureHandmatigGewijzigd) {
@@ -351,6 +455,8 @@ button.addEventListener('click', async () => {
   veldWaarden.runs = runs;
   veldWaarden.temperature_modus = modus;
   veldWaarden.temperatures = temperaturesArray;
+  veldWaarden.reviewers = _leesReviewers();
+  veldWaarden.review_modus = reviewModusSelectEl ? reviewModusSelectEl.value : 'iteratief';
 
   const heeftBijlage = bijlageInputEl.files.length > 0;
   let fetchOpties;
@@ -382,6 +488,13 @@ button.addEventListener('click', async () => {
     const data = await response.json();
     if (response.ok) {
       renderRunResultaten(data.runs);
+      if (data.reviewer_stappen && data.reviewer_stappen.length > 0) {
+        renderReviewerStappen(data.reviewer_stappen);
+      }
+      if (data.eindoutput !== undefined && !(data.reviewer_stappen && data.reviewer_stappen.length > 0)) {
+        eindoutputEl.innerHTML = marked.parse(data.eindoutput || '');
+        eindoutputEl.classList.remove('hidden');
+      }
     } else {
       errorEl.textContent = parseerFoutmelding(data.detail);
       errorEl.classList.remove('hidden');

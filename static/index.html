@@ -128,6 +128,16 @@
           </div>
         </div>
 
+        <div class="veld">
+          <label for="review-modus">Reviewmodus</label>
+          <select id="review-modus" name="review-modus" data-testid="review-modus-select">
+            <option value="iteratief">Iteratief</option>
+          </select>
+        </div>
+
+        <div id="reviewer-lijst"></div>
+        <button type="button" id="reviewer-toevoegen" data-testid="reviewer-toevoegen">+ Reviewer toevoegen</button>
+
         <button type="button" id="submit">Verstuur</button>
       </form>
 
@@ -139,6 +149,10 @@
       <div data-testid="response" class="hidden"></div>
 
       <div data-testid="run-results" class="hidden"></div>
+
+      <div data-testid="reviewer-stappen-lijst" class="hidden"></div>
+
+      <div data-testid="eindoutput" class="hidden"></div>
 
       <div data-testid="error" class="hidden"></div>
 
