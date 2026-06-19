@@ -7,3 +7,4 @@ sessions/
 .claude/settings.local.json
 tests/.new-tests
 .playwright-mcp/
+settings.json

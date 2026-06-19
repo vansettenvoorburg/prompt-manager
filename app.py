@@ -1,3 +1,4 @@
+import asyncio
 import io
 import json
 import os
@@ -9,7 +10,7 @@ from pathlib import Path
 from dotenv import load_dotenv
 from fastapi import FastAPI, File, Form, HTTPException, Request, UploadFile
 from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel, ValidationError
+from pydantic import BaseModel, Field, ValidationError
 from typing import Annotated
 
 load_dotenv()
@@ -22,7 +23,12 @@ GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
 GROQ_MODEL = os.getenv("GROQ_MODEL", "llama3-8b-8192")
 SESSIONS_DIR = Path("sessions")
 LOGS_DIR = Path.home() / "Documents" / "PromptSessieManager" / "logs"
+SETTINGS_FILE = Path("settings.json")
 
+_GROQ_RPM_DEFAULT = 30
+_GOOGLE_RPM_DEFAULT = 15
+_BACKOFF_SECONDEN = [5, 10, 20]
+_MAX_RETRIES = 3
 
 _TEKST_EXTENSIES = {".txt", ".md", ".py", ".js", ".ts", ".html", ".css", ".json"}
 _ONDERSTEUNDE_EXTENSIES = _TEKST_EXTENSIES | {".pdf", ".docx"}
@@ -38,6 +44,29 @@ def extract_docx_text(content: bytes) -> str:
     from docx import Document
     doc = Document(io.BytesIO(content))
     return "\n".join(para.text for para in doc.paragraphs)
+
+
+def _laad_rpm(provider: str) -> int:
+    try:
+        data = json.loads(SETTINGS_FILE.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        data = {}
+    if provider == "groq":
+        return int(data.get("groq_rpm", _GROQ_RPM_DEFAULT))
+    if provider == "google":
+        return int(data.get("google_rpm", _GOOGLE_RPM_DEFAULT))
+    return 0
+
+
+class RateLimitError(Exception):
+    def __init__(self, retries: int):
+        self.retries = retries
+        super().__init__(f"API-limiet bereikt na {retries} pogingen — probeer later opnieuw")
+
+
+class SettingsModel(BaseModel):
+    groq_rpm: int = Field(ge=0, default=_GROQ_RPM_DEFAULT)
+    google_rpm: int = Field(ge=0, default=_GOOGLE_RPM_DEFAULT)
 
 
 class ReviewerConfig(BaseModel):
@@ -120,7 +149,7 @@ def bouw_reviewer_prompt(
         header_regels.append(
             "TAAK: Herschrijf de volledige tekst hieronder zodat deze verbeterd is op basis van je reviewfocus.\n"
             "REGELS:\n"
-            "- Geef ALLEEN de verbeterde, volledige tekst terug — niets anders.\n"
+            "- Geef ALLEEN de verbeterde en complete versie terug — niets anders.\n"
             "- Begin direct met de inhoud, zonder inleiding of afsluiting.\n"
             "- Voeg geen commentaar, feedback, uitleg of wijzigingsmarkering toe.\n"
             "- Laat ongewijzigde delen intact in de output."
@@ -142,7 +171,20 @@ def bouw_reviewer_prompt(
     return "\n\n".join(delen)
 
 
-def _schrijf_log(body: PromptRequest, prompt_tekst: str, antwoord: str, start: datetime, duur: float, model: str, run_nummer: int, temperature: float, bijlage_bestandsnaam: str | None = None, bijlage_tekst: str | None = None):
+def _schrijf_log(
+    body: PromptRequest,
+    prompt_tekst: str,
+    antwoord: str,
+    start: datetime,
+    duur: float,
+    model: str,
+    run_nummer: int,
+    temperature: float,
+    bijlage_bestandsnaam: str | None = None,
+    bijlage_tekst: str | None = None,
+    rate_limit_retries: int | None = None,
+    retry_after_seconden: float | None = None,
+):
     provider = body.provider.lower()
     sessie = body.sessie.strip() or "geen-sessie"
     timestamp = start.strftime("%Y-%m-%dT%H:%M:%S")
@@ -171,6 +213,10 @@ def _schrijf_log(body: PromptRequest, prompt_tekst: str, antwoord: str, start: d
         "bijlage_bestandsnaam": bijlage_bestandsnaam,
         "bijlage_tekst": bijlage_tekst,
     }
+    if rate_limit_retries is not None:
+        log_data["rate_limit_retries"] = rate_limit_retries
+    if retry_after_seconden is not None:
+        log_data["retry_after_seconden"] = retry_after_seconden
     try:
         LOGS_DIR.mkdir(parents=True, exist_ok=True)
     except OSError as exc:
@@ -185,7 +231,21 @@ def _schrijf_log(body: PromptRequest, prompt_tekst: str, antwoord: str, start: d
     return pad, None
 
 
-def _schrijf_reviewer_log(body: PromptRequest, reviewer_nr: int, reviewer_rol: str, reviewer_omschrijving: str, run_nummer: int, temperature: float, prompt_tekst: str, antwoord: str, start: datetime, duur: float, model: str):
+def _schrijf_reviewer_log(
+    body: PromptRequest,
+    reviewer_nr: int,
+    reviewer_rol: str,
+    reviewer_omschrijving: str,
+    run_nummer: int,
+    temperature: float,
+    prompt_tekst: str,
+    antwoord: str,
+    start: datetime,
+    duur: float,
+    model: str,
+    rate_limit_retries: int | None = None,
+    retry_after_seconden: float | None = None,
+):
     provider = body.provider.lower()
     sessie = body.sessie.strip() or "geen-sessie"
     timestamp = start.strftime("%Y-%m-%dT%H:%M:%S")
@@ -205,6 +265,10 @@ def _schrijf_reviewer_log(body: PromptRequest, reviewer_nr: int, reviewer_rol: s
         "response": antwoord,
         "duur_seconden": round(duur, 3),
     }
+    if rate_limit_retries is not None:
+        log_data["rate_limit_retries"] = rate_limit_retries
+    if retry_after_seconden is not None:
+        log_data["retry_after_seconden"] = retry_after_seconden
     try:
         LOGS_DIR.mkdir(parents=True, exist_ok=True)
     except OSError as exc:
@@ -251,8 +315,35 @@ async def call_groq(prompt: str, temperature: float) -> str:
             )
             response.raise_for_status()
             return response.json()["choices"][0]["message"]["content"]
+        except httpx.HTTPStatusError:
+            raise
         except httpx.HTTPError as exc:
             raise ConnectionError("Groq niet bereikbaar") from exc
+
+
+async def _roep_groq_aan_met_retry(
+    prompt: str, temperature: float
+) -> tuple[str, int, float | None]:
+    retries = 0
+    retry_after_seconden: float | None = None
+
+    while True:
+        try:
+            result = await call_groq(prompt, temperature)
+            return result, retries, retry_after_seconden
+        except httpx.HTTPStatusError as exc:
+            if exc.response.status_code != 429:
+                raise ConnectionError("Groq niet bereikbaar") from exc
+            if retries >= _MAX_RETRIES:
+                raise RateLimitError(_MAX_RETRIES) from exc
+            retries += 1
+            header = exc.response.headers.get("retry-after")
+            if header is not None:
+                wacht = float(header)
+                retry_after_seconden = wacht
+            else:
+                wacht = _BACKOFF_SECONDEN[retries - 1]
+            await asyncio.sleep(wacht)
 
 
 async def _voer_prompt_uit(
@@ -290,25 +381,42 @@ async def _voer_prompt_uit(
             detail="Groq API key ontbreekt — stel GROQ_API_KEY in via .env",
         )
 
+    rpm = _laad_rpm(provider)
+    delay = (60.0 / rpm) if rpm > 0 else 0.0
+
     prompt = bouw_prompt(body, bijlage_tekst)
     resultaten = []
+    is_eerste_request = True
 
     for i in range(1, body.runs + 1):
         temperature = body.temperatures[i - 1] if body.temperature_modus == "per_run" else body.temperatures[0]
+
+        if not is_eerste_request and delay > 0:
+            await asyncio.sleep(delay)
+        is_eerste_request = False
+
         start = datetime.now()
 
         try:
             if provider == "groq":
-                result = await call_groq(prompt, temperature)
+                result, retries, retry_after_sec = await _roep_groq_aan_met_retry(prompt, temperature)
                 model = GROQ_MODEL
             else:
                 result = await call_ollama(prompt, temperature)
+                retries, retry_after_sec = 0, None
                 model = OLLAMA_MODEL
 
             duur = (datetime.now() - start).total_seconds()
-            log_pad, log_warning = _schrijf_log(body, prompt, result, start, duur, model, i, temperature, bijlage_bestandsnaam, bijlage_tekst)
+            log_pad, log_warning = _schrijf_log(
+                body, prompt, result, start, duur, model, i, temperature,
+                bijlage_bestandsnaam, bijlage_tekst,
+                rate_limit_retries=retries if retries > 0 else None,
+                retry_after_seconden=retry_after_sec,
+            )
 
             run_result: dict = {"run_nummer": i, "temperature": temperature, "response": result}
+            if retries > 0:
+                run_result["rate_limit_retries"] = retries
             if log_warning:
                 run_result["log_warning"] = log_warning
             else:
@@ -316,6 +424,12 @@ async def _voer_prompt_uit(
                 run_result["log_path"] = str(log_pad)
             resultaten.append(run_result)
 
+        except RateLimitError as exc:
+            resultaten.append({
+                "run_nummer": i,
+                "fout": str(exc),
+                "rate_limit_retries": exc.retries,
+            })
         except ConnectionError as exc:
             resultaten.append({"run_nummer": i, "fout": str(exc)})
 
@@ -338,19 +452,27 @@ async def _voer_prompt_uit(
                 reviewer.rol, reviewer.omschrijving, body, vorige_output,
                 body.review_modus, bijlage_tekst,
             )
+
+            if not is_eerste_request and delay > 0:
+                await asyncio.sleep(delay)
+            is_eerste_request = False
+
             start = datetime.now()
             try:
                 if provider == "groq":
-                    result = await call_groq(reviewer_prompt, temperature)
+                    result, retries, retry_after_sec = await _roep_groq_aan_met_retry(reviewer_prompt, temperature)
                     model = GROQ_MODEL
                 else:
                     result = await call_ollama(reviewer_prompt, temperature)
+                    retries, retry_after_sec = 0, None
                     model = OLLAMA_MODEL
 
                 duur = (datetime.now() - start).total_seconds()
                 log_pad, log_warning = _schrijf_reviewer_log(
                     body, reviewer_nr, reviewer.rol, reviewer.omschrijving, run_nummer, temperature,
                     reviewer_prompt, result, start, duur, model,
+                    rate_limit_retries=retries if retries > 0 else None,
+                    retry_after_seconden=retry_after_sec,
                 )
 
                 stap: dict = {
@@ -360,6 +482,8 @@ async def _voer_prompt_uit(
                     "temperature": temperature,
                     "response": result,
                 }
+                if retries > 0:
+                    stap["rate_limit_retries"] = retries
                 if log_warning:
                     stap["log_warning"] = log_warning
                 else:
@@ -368,6 +492,14 @@ async def _voer_prompt_uit(
                 reviewer_stappen.append(stap)
                 vorige_output = result
 
+            except RateLimitError as exc:
+                reviewer_stappen.append({
+                    "reviewer_nr": reviewer_nr,
+                    "reviewer_rol": reviewer.rol,
+                    "run_nummer": run_nummer,
+                    "fout": str(exc),
+                    "rate_limit_retries": exc.retries,
+                })
             except ConnectionError as exc:
                 reviewer_stappen.append({
                     "reviewer_nr": reviewer_nr,
@@ -377,6 +509,28 @@ async def _voer_prompt_uit(
                 })
 
     return {"runs": resultaten, "reviewer_stappen": reviewer_stappen, "eindoutput": vorige_output}
+
+
+@app.get("/api/settings")
+async def get_settings():
+    try:
+        data = json.loads(SETTINGS_FILE.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        data = {}
+    return {
+        "groq_rpm": int(data.get("groq_rpm", _GROQ_RPM_DEFAULT)),
+        "google_rpm": int(data.get("google_rpm", _GOOGLE_RPM_DEFAULT)),
+    }
+
+
+@app.put("/api/settings")
+async def put_settings(body: SettingsModel):
+    data = body.model_dump()
+    try:
+        SETTINGS_FILE.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
+    except OSError as exc:
+        raise HTTPException(status_code=500, detail=str(exc))
+    return {"status": "ok"}
 
 
 @app.post("/api/prompt")

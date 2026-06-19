@@ -6,6 +6,12 @@ import httpx
 import pytest
 from httpx import AsyncClient, ASGITransport
 
+
+def pytest_collection_modifyitems(items):
+    for item in items:
+        if "test_frontend" in item.fspath.basename:
+            item.add_marker(pytest.mark.frontend)
+
 BASE_URL = "http://localhost:3000"
 _server_process = None
 

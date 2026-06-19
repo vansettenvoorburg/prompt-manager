@@ -42,6 +42,12 @@
     <main>
       <h1>Prompt Sessie Manager</h1>
 
+      <nav class="tabs">
+        <button type="button" data-testid="tab-prompt" class="tab tab-actief">Prompt</button>
+        <button type="button" data-testid="tab-instellingen" class="tab">Instellingen</button>
+      </nav>
+
+      <div data-testid="prompt-paneel">
       <form id="prompt-form">
         <div class="veld">
           <label for="rol">Rol <span class="verplicht">*</span></label>
@@ -155,6 +161,23 @@
       <div data-testid="eindoutput" class="hidden"></div>
 
       <div data-testid="error" class="hidden"></div>
+
+      </div><!-- /prompt-paneel -->
+
+      <div data-testid="instellingen-paneel" class="hidden">
+        <h2>Instellingen</h2>
+        <div class="veld">
+          <label for="groq-rpm">Groq RPM (requests per minuut)</label>
+          <input type="number" id="groq-rpm" data-testid="groq-rpm-input" min="0" value="30">
+        </div>
+        <div class="veld">
+          <label for="google-rpm">Google RPM (requests per minuut)</label>
+          <input type="number" id="google-rpm" data-testid="google-rpm-input" min="0" value="15">
+        </div>
+        <button type="button" id="instellingen-opslaan">Instellingen opslaan</button>
+        <p data-testid="instellingen-bevestiging" class="hidden"></p>
+        <p data-testid="instellingen-fout" class="hidden"></p>
+      </div><!-- /instellingen-paneel -->
 
     </main>
   </div>
