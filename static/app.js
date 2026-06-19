@@ -434,7 +434,68 @@ bijlageVerwijderEl.addEventListener('click', () => {
   bijlageVerwijderEl.style.display = 'none';
 });
 
+const tabPromptEl = document.querySelector('[data-testid="tab-prompt"]');
+const tabInstellingenEl = document.querySelector('[data-testid="tab-instellingen"]');
+const promptPaneelEl = document.querySelector('[data-testid="prompt-paneel"]');
+const instellingenPaneelEl = document.querySelector('[data-testid="instellingen-paneel"]');
+const groqRpmInputEl = document.querySelector('[data-testid="groq-rpm-input"]');
+const googleRpmInputEl = document.querySelector('[data-testid="google-rpm-input"]');
+const instellingenOpslaanEl = document.getElementById('instellingen-opslaan');
+const instellingenBevestigingEl = document.querySelector('[data-testid="instellingen-bevestiging"]');
+const instellingenFoutEl = document.querySelector('[data-testid="instellingen-fout"]');
+
+async function laadInstellingen() {
+  try {
+    const res = await fetch('/api/settings');
+    if (!res.ok) return;
+    const data = await res.json();
+    groqRpmInputEl.value = data.groq_rpm;
+    googleRpmInputEl.value = data.google_rpm;
+  } catch (_) {}
+}
+
+async function slaInstellingenOp() {
+  instellingenBevestigingEl.classList.add('hidden');
+  instellingenFoutEl.classList.add('hidden');
+  const groqRpm = parseInt(groqRpmInputEl.value, 10);
+  const googleRpm = parseInt(googleRpmInputEl.value, 10);
+  try {
+    const res = await fetch('/api/settings', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ groq_rpm: groqRpm, google_rpm: googleRpm }),
+    });
+    if (res.ok) {
+      instellingenBevestigingEl.textContent = 'Instellingen opgeslagen.';
+      instellingenBevestigingEl.classList.remove('hidden');
+    } else {
+      instellingenFoutEl.textContent = 'Opslaan mislukt.';
+      instellingenFoutEl.classList.remove('hidden');
+    }
+  } catch (err) {
+    instellingenFoutEl.textContent = err.message || 'Opslaan mislukt.';
+    instellingenFoutEl.classList.remove('hidden');
+  }
+}
+
+tabPromptEl.addEventListener('click', () => {
+  promptPaneelEl.classList.remove('hidden');
+  instellingenPaneelEl.classList.add('hidden');
+  tabPromptEl.classList.add('tab-actief');
+  tabInstellingenEl.classList.remove('tab-actief');
+});
+
+tabInstellingenEl.addEventListener('click', () => {
+  promptPaneelEl.classList.add('hidden');
+  instellingenPaneelEl.classList.remove('hidden');
+  tabInstellingenEl.classList.add('tab-actief');
+  tabPromptEl.classList.remove('tab-actief');
+});
+
+instellingenOpslaanEl.addEventListener('click', slaInstellingenOp);
+
 laadSessiesLijst();
+laadInstellingen();
 
 button.addEventListener('click', async () => {
   hideAll();
@@ -491,7 +552,7 @@ button.addEventListener('click', async () => {
       if (data.reviewer_stappen && data.reviewer_stappen.length > 0) {
         renderReviewerStappen(data.reviewer_stappen);
       }
-      if (data.eindoutput !== undefined && !(data.reviewer_stappen && data.reviewer_stappen.length > 0)) {
+      if (data.eindoutput !== undefined) {
         eindoutputEl.innerHTML = marked.parse(data.eindoutput || '');
         eindoutputEl.classList.remove('hidden');
       }
