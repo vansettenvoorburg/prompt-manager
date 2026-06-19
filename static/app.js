@@ -108,6 +108,24 @@ function _leesReviewers() {
   });
 }
 
+function maakKopieerKnop(tekst) {
+  const knop = document.createElement('button');
+  knop.type = 'button';
+  knop.setAttribute('data-testid', 'kopieer-knop');
+  knop.classList.add('kopieer-knop');
+  knop.textContent = 'Kopieer';
+  knop.addEventListener('click', async () => {
+    try {
+      await navigator.clipboard.writeText(tekst);
+      knop.textContent = 'Gekopieerd!';
+    } catch (_) {
+      knop.textContent = 'Mislukt';
+    }
+    setTimeout(() => { knop.textContent = 'Kopieer'; }, 2000);
+  });
+  return knop;
+}
+
 function renderReviewerStappen(stappen) {
   reviewerStappenListEl.innerHTML = '';
   for (const stap of stappen) {
@@ -119,7 +137,10 @@ function renderReviewerStappen(stappen) {
     } else {
       const header = document.createElement('div');
       header.classList.add('run-header');
-      header.textContent = `Reviewer ${stap.reviewer_nr} (${stap.reviewer_rol}) — run ${stap.run_nummer} — temperature ${stap.temperature}`;
+      const label = document.createElement('span');
+      label.textContent = `Reviewer ${stap.reviewer_nr} (${stap.reviewer_rol}) — run ${stap.run_nummer} — temperature ${stap.temperature}`;
+      header.appendChild(label);
+      header.appendChild(maakKopieerKnop(stap.response || ''));
       const body = document.createElement('div');
       body.classList.add('run-body');
       body.innerHTML = marked.parse(stap.response || '');
@@ -204,19 +225,22 @@ function renderRunResultaten(runs) {
     } else {
       const header = document.createElement('div');
       header.classList.add('run-header');
-      header.textContent = `Run ${run.run_nummer} — temperature ${run.temperature}`;
+      const label = document.createElement('span');
+      label.textContent = `Run ${run.run_nummer} — temperature ${run.temperature}`;
       if (run.log_status === 'ok') {
         const logNote = document.createElement('span');
         logNote.classList.add('run-log-note');
         logNote.textContent = ` · Log opgeslagen: ${run.log_path}`;
-        header.appendChild(logNote);
+        label.appendChild(logNote);
       }
       if (run.log_warning) {
         const warnNote = document.createElement('span');
         warnNote.classList.add('run-log-warning');
         warnNote.textContent = ` · Waarschuwing: ${run.log_warning}`;
-        header.appendChild(warnNote);
+        label.appendChild(warnNote);
       }
+      header.appendChild(label);
+      header.appendChild(maakKopieerKnop(run.response || ''));
       const body = document.createElement('div');
       body.classList.add('run-body');
       body.innerHTML = marked.parse(run.response || '');
@@ -553,7 +577,18 @@ button.addEventListener('click', async () => {
         renderReviewerStappen(data.reviewer_stappen);
       }
       if (data.eindoutput !== undefined) {
-        eindoutputEl.innerHTML = marked.parse(data.eindoutput || '');
+        eindoutputEl.innerHTML = '';
+        const eindHeader = document.createElement('div');
+        eindHeader.classList.add('run-header');
+        const eindLabel = document.createElement('span');
+        eindLabel.textContent = 'Eindversie';
+        eindHeader.appendChild(eindLabel);
+        eindHeader.appendChild(maakKopieerKnop(data.eindoutput || ''));
+        const eindBody = document.createElement('div');
+        eindBody.classList.add('run-body');
+        eindBody.innerHTML = marked.parse(data.eindoutput || '');
+        eindoutputEl.appendChild(eindHeader);
+        eindoutputEl.appendChild(eindBody);
         eindoutputEl.classList.remove('hidden');
       }
     } else {

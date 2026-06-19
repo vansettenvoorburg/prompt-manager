@@ -6,11 +6,37 @@ import httpx
 import pytest
 from httpx import AsyncClient, ASGITransport
 
+_CLIPBOARD_INIT_SCRIPT = """
+(function () {
+    try {
+        var desc = Object.getOwnPropertyDescriptor(Navigator.prototype, 'clipboard');
+        var val = desc && desc.get ? desc.get.call(navigator) : navigator.clipboard;
+        Object.defineProperty(navigator, 'clipboard', {
+            configurable: true,
+            get: function () { return val; },
+            set: function (v) { val = v; },
+        });
+    } catch (_) {}
+})();
+"""
+
 
 def pytest_collection_modifyitems(items):
     for item in items:
         if "test_frontend" in item.fspath.basename:
             item.add_marker(pytest.mark.frontend)
+
+
+@pytest.fixture(autouse=True)
+def _maak_clipboard_schrijfbaar(request):
+    """Maak navigator.clipboard schrijfbaar zodat frontend-tests hem kunnen mocken."""
+    if "test_frontend" not in str(request.node.fspath):
+        return
+    try:
+        context = request.getfixturevalue("context")
+    except pytest.FixtureLookupError:
+        return
+    context.add_init_script(_CLIPBOARD_INIT_SCRIPT)
 
 BASE_URL = "http://localhost:3000"
 _server_process = None
