@@ -191,7 +191,11 @@ async def test_prompt_identiek_opgebouwd_bij_groq_en_ollama(client, groq_key):
     """De samengestelde prompt is voor Groq identiek aan die voor Ollama bij dezelfde invoer."""
     vastgelegde_prompts = []
 
-    async def vang_op(prompt, temperature):
+    async def vang_op_ollama(prompt, temperature):
+        vastgelegde_prompts.append(prompt)
+        return "antwoord"
+
+    async def vang_op_groq(prompt, temperature, model):
         vastgelegde_prompts.append(prompt)
         return "antwoord"
 
@@ -204,10 +208,10 @@ async def test_prompt_identiek_opgebouwd_bij_groq_en_ollama(client, groq_key):
         "temperatures": [0.8],
     }
 
-    with patch("app.call_ollama", side_effect=vang_op):
+    with patch("app.call_ollama", side_effect=vang_op_ollama):
         await client.post("/api/prompt", json={**payload_basis, "provider": "ollama"})
 
-    with patch("app.call_groq", side_effect=vang_op):
+    with patch("app.call_groq", side_effect=vang_op_groq):
         await client.post("/api/prompt", json={**payload_basis, "provider": "groq"})
 
     assert len(vastgelegde_prompts) == 2

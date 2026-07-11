@@ -28,9 +28,37 @@ const providerSelectEl = document.querySelector('[data-testid="provider-select"]
 const sessionSelectEl = document.querySelector('[data-testid="session-select"]');
 const runsInputEl = document.querySelector('[data-testid="runs-input"]');
 const temperatureInputEl = document.querySelector('[data-testid="temperature-input"]');
+const groqModelVeldEl = document.querySelector('[data-testid="groq-model-veld"]');
+const groqModelSelectEl = document.querySelector('[data-testid="groq-model-select"]');
 
 const PROVIDER_DEFAULTS = { ollama: '0.8', groq: '1' };
 let temperatureHandmatigGewijzigd = false;
+
+const GROQ_MODELS_NIEUW = [
+  'openai/gpt-oss-120b',
+  'openai/gpt-oss-20b',
+  'moonshotai/kimi-k2-instruct',
+  'qwen3-32b',
+];
+let groqModelEnvDefault = 'llama3-8b-8192';
+
+function vulGroqModelDropdown(envDefault) {
+  groqModelEnvDefault = envDefault;
+  const huidigeWaarde = groqModelSelectEl.value;
+  groqModelSelectEl.innerHTML = '';
+  const modellen = [envDefault, ...GROQ_MODELS_NIEUW.filter(m => m !== envDefault)];
+  for (const m of modellen) {
+    const optie = document.createElement('option');
+    optie.value = m;
+    optie.textContent = m;
+    groqModelSelectEl.appendChild(optie);
+  }
+  groqModelSelectEl.value = modellen.includes(huidigeWaarde) ? huidigeWaarde : envDefault;
+}
+
+function toonOfVerbergGroqModel() {
+  groqModelVeldEl.classList.toggle('hidden', providerSelectEl.value !== 'groq');
+}
 
 const sessieCache = {};
 
@@ -284,6 +312,10 @@ function _pasSessieToe(data) {
   }
   if (data.provider && providerSelectEl) {
     providerSelectEl.value = data.provider;
+    toonOfVerbergGroqModel();
+  }
+  if (data.provider === 'groq') {
+    groqModelSelectEl.value = data.groq_model || groqModelEnvDefault;
   }
   if (data.runs !== undefined) {
     runsInputEl.value = String(data.runs);
@@ -388,6 +420,9 @@ async function slaOp(force = false) {
   body.bijlage_bestandsnaam = bijlageInputEl.files.length > 0 ? bijlageInputEl.files[0].name : null;
   body.reviewers = _leesReviewers();
   body.review_modus = reviewModusSelectEl ? reviewModusSelectEl.value : 'iteratief';
+  if (body.provider === 'groq') {
+    body.groq_model = groqModelSelectEl.value;
+  }
 
   try {
     const res = await fetch('/api/sessions', {
@@ -425,6 +460,7 @@ providerSelectEl.addEventListener('change', () => {
   if (!temperatureHandmatigGewijzigd) {
     temperatureInputEl.value = PROVIDER_DEFAULTS[providerSelectEl.value] || '0.8';
   }
+  toonOfVerbergGroqModel();
 });
 
 temperatureInputEl.addEventListener('input', () => {
@@ -475,6 +511,7 @@ async function laadInstellingen() {
     const data = await res.json();
     groqRpmInputEl.value = data.groq_rpm;
     googleRpmInputEl.value = data.google_rpm;
+    vulGroqModelDropdown(data.groq_model || 'llama3-8b-8192');
   } catch (_) {}
 }
 
@@ -542,6 +579,9 @@ button.addEventListener('click', async () => {
   veldWaarden.temperatures = temperaturesArray;
   veldWaarden.reviewers = _leesReviewers();
   veldWaarden.review_modus = reviewModusSelectEl ? reviewModusSelectEl.value : 'iteratief';
+  if (veldWaarden.provider === 'groq') {
+    veldWaarden.model = groqModelSelectEl.value;
+  }
 
   const heeftBijlage = bijlageInputEl.files.length > 0;
   let fetchOpties;
