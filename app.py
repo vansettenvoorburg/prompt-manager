@@ -1,4 +1,5 @@
 import asyncio
+import contextvars
 import io
 import json
 import os
@@ -21,6 +22,12 @@ OLLAMA_URL = os.getenv("OLLAMA_URL", "http://localhost:11434/api/generate")
 OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "llama3.2")
 GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
 GROQ_MODEL = os.getenv("GROQ_MODEL", "llama3-8b-8192")
+GROQ_MODELS_BESCHIKBAAR = [
+    "openai/gpt-oss-120b",
+    "openai/gpt-oss-20b",
+    "moonshotai/kimi-k2-instruct",
+    "qwen3-32b",
+]
 SESSIONS_DIR = Path("sessions")
 LOGS_DIR = Path.home() / "Documents" / "PromptSessieManager" / "logs"
 SETTINGS_FILE = Path("settings.json")
@@ -32,6 +39,14 @@ _MAX_RETRIES = 3
 
 _TEKST_EXTENSIES = {".txt", ".md", ".py", ".js", ".ts", ".html", ".css", ".json"}
 _ONDERSTEUNDE_EXTENSIES = _TEKST_EXTENSIES | {".pdf", ".docx"}
+
+_laatst_bevestigd_groq_model: contextvars.ContextVar[str | None] = contextvars.ContextVar(
+    "laatst_bevestigd_groq_model", default=None
+)
+
+
+def _saneer_voor_bestandsnaam(waarde: str) -> str:
+    return re.sub(r'[<>:"/\\|?*]', "-", waarde)
 
 
 def extract_pdf_text(content: bytes) -> str:
@@ -94,6 +109,7 @@ class SessionRequest(BaseModel):
     bijlage_bestandsnaam: str | None = None
     reviewers: list[ReviewerConfig] = []
     review_modus: str = "iteratief"
+    groq_model: str | None = None
 
 
 class PromptRequest(BaseModel):
@@ -112,6 +128,7 @@ class PromptRequest(BaseModel):
     temperatures: list[float] = []
     reviewers: list[ReviewerConfig] = []
     review_modus: str = "iteratief"
+    model: str | None = None
 
 
 _OPTIONELE_LABELS = [
@@ -184,16 +201,19 @@ def _schrijf_log(
     bijlage_tekst: str | None = None,
     rate_limit_retries: int | None = None,
     retry_after_seconden: float | None = None,
+    model_bevestigd: str | None = None,
 ):
     provider = body.provider.lower()
     sessie = body.sessie.strip() or "geen-sessie"
     timestamp = start.strftime("%Y-%m-%dT%H:%M:%S")
     datum_tijd = start.strftime("%Y-%m-%d_%H-%M-%S")
-    bestandsnaam = f"{datum_tijd}_{provider}_{sessie}_run{run_nummer}_t{temperature:g}.json"
+    model_gesaneerd = _saneer_voor_bestandsnaam(model)
+    bestandsnaam = f"{datum_tijd}_{provider}_{model_gesaneerd}_{sessie}_run{run_nummer}_t{temperature:g}.json"
     log_data = {
         "timestamp": timestamp,
         "provider": provider,
         "model": model,
+        "model_bevestigd_door_groq": model_bevestigd,
         "sessie": sessie,
         "run_nummer": run_nummer,
         "temperature": temperature,
@@ -250,7 +270,8 @@ def _schrijf_reviewer_log(
     sessie = body.sessie.strip() or "geen-sessie"
     timestamp = start.strftime("%Y-%m-%dT%H:%M:%S")
     datum_tijd = start.strftime("%Y-%m-%d_%H-%M-%S-%f")
-    bestandsnaam = f"{datum_tijd}_{provider}_{sessie}_reviewer{reviewer_nr}_run{run_nummer}_t{temperature:g}.json"
+    model_gesaneerd = _saneer_voor_bestandsnaam(model)
+    bestandsnaam = f"{datum_tijd}_{provider}_{model_gesaneerd}_{sessie}_reviewer{reviewer_nr}_run{run_nummer}_t{temperature:g}.json"
     log_data = {
         "timestamp": timestamp,
         "provider": provider,
@@ -301,20 +322,22 @@ async def call_ollama(prompt: str, temperature: float) -> str:
             raise ConnectionError("Ollama niet bereikbaar") from exc
 
 
-async def call_groq(prompt: str, temperature: float) -> str:
+async def call_groq(prompt: str, temperature: float, model: str) -> str:
     async with httpx.AsyncClient(timeout=120.0) as client:
         try:
             response = await client.post(
                 "https://api.groq.com/openai/v1/chat/completions",
                 headers={"Authorization": f"Bearer {GROQ_API_KEY}"},
                 json={
-                    "model": GROQ_MODEL,
+                    "model": model,
                     "messages": [{"role": "user", "content": prompt}],
                     "temperature": temperature,
                 },
             )
             response.raise_for_status()
-            return response.json()["choices"][0]["message"]["content"]
+            data = response.json()
+            _laatst_bevestigd_groq_model.set(data.get("model"))
+            return data["choices"][0]["message"]["content"]
         except httpx.HTTPStatusError:
             raise
         except httpx.HTTPError as exc:
@@ -322,14 +345,15 @@ async def call_groq(prompt: str, temperature: float) -> str:
 
 
 async def _roep_groq_aan_met_retry(
-    prompt: str, temperature: float
+    prompt: str, temperature: float, model: str
 ) -> tuple[str, int, float | None]:
     retries = 0
     retry_after_seconden: float | None = None
 
     while True:
         try:
-            result = await call_groq(prompt, temperature)
+            _laatst_bevestigd_groq_model.set(None)
+            result = await call_groq(prompt, temperature, model)
             return result, retries, retry_after_seconden
         except httpx.HTTPStatusError as exc:
             if exc.response.status_code != 429:
@@ -381,6 +405,16 @@ async def _voer_prompt_uit(
             detail="Groq API key ontbreekt — stel GROQ_API_KEY in via .env",
         )
 
+    groq_model_gebruikt = GROQ_MODEL
+    if provider == "groq" and body.model is not None:
+        geldige_modellen = {GROQ_MODEL, *GROQ_MODELS_BESCHIKBAAR}
+        if body.model not in geldige_modellen:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Onbekend of leeg model: '{body.model}'",
+            )
+        groq_model_gebruikt = body.model
+
     rpm = _laad_rpm(provider)
     delay = (60.0 / rpm) if rpm > 0 else 0.0
 
@@ -398,9 +432,13 @@ async def _voer_prompt_uit(
         start = datetime.now()
 
         try:
+            model_bevestigd = None
             if provider == "groq":
-                result, retries, retry_after_sec = await _roep_groq_aan_met_retry(prompt, temperature)
-                model = GROQ_MODEL
+                result, retries, retry_after_sec = await _roep_groq_aan_met_retry(
+                    prompt, temperature, groq_model_gebruikt
+                )
+                model = groq_model_gebruikt
+                model_bevestigd = _laatst_bevestigd_groq_model.get()
             else:
                 result = await call_ollama(prompt, temperature)
                 retries, retry_after_sec = 0, None
@@ -412,11 +450,16 @@ async def _voer_prompt_uit(
                 bijlage_bestandsnaam, bijlage_tekst,
                 rate_limit_retries=retries if retries > 0 else None,
                 retry_after_seconden=retry_after_sec,
+                model_bevestigd=model_bevestigd,
             )
 
             run_result: dict = {"run_nummer": i, "temperature": temperature, "response": result}
             if retries > 0:
                 run_result["rate_limit_retries"] = retries
+            if model_bevestigd is not None and model_bevestigd != model:
+                run_result["model_mismatch_warning"] = (
+                    f"Aangevraagd model '{model}' wijkt af van door Groq bevestigd model '{model_bevestigd}'"
+                )
             if log_warning:
                 run_result["log_warning"] = log_warning
             else:
@@ -460,8 +503,10 @@ async def _voer_prompt_uit(
             start = datetime.now()
             try:
                 if provider == "groq":
-                    result, retries, retry_after_sec = await _roep_groq_aan_met_retry(reviewer_prompt, temperature)
-                    model = GROQ_MODEL
+                    result, retries, retry_after_sec = await _roep_groq_aan_met_retry(
+                        reviewer_prompt, temperature, groq_model_gebruikt
+                    )
+                    model = groq_model_gebruikt
                 else:
                     result = await call_ollama(reviewer_prompt, temperature)
                     retries, retry_after_sec = 0, None
@@ -520,6 +565,7 @@ async def get_settings():
     return {
         "groq_rpm": int(data.get("groq_rpm", _GROQ_RPM_DEFAULT)),
         "google_rpm": int(data.get("google_rpm", _GOOGLE_RPM_DEFAULT)),
+        "groq_model": GROQ_MODEL,
     }
 
 
@@ -603,6 +649,7 @@ async def handle_prompt(request: Request):
             temperatures=temperatures_list,
             reviewers=reviewers_list,
             review_modus=form_data.get("review_modus", "iteratief"),
+            model=form_data.get("model"),
         )
         return await _voer_prompt_uit(body, bijlage_bestandsnaam, bijlage_tekst)
 
@@ -718,6 +765,7 @@ async def save_session(body: SessionRequest):
         "bijlage_bestandsnaam": body.bijlage_bestandsnaam,
         "reviewers": [r.model_dump() for r in body.reviewers],
         "review_modus": body.review_modus,
+        "groq_model": body.groq_model,
     }
     try:
         path.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
