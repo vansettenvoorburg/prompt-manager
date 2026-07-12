@@ -1,7 +1,7 @@
 """
 Frontend-tests voor story 10: Kopieerknop en formulieropmaak.
 
-Vereist: de app draait op http://localhost:3000 (python app.py).
+Vereist: geen — de `server`-fixture (conftest.py) start de app automatisch op de testpoort.
 
 AC gedekt:
 - Elk run-resultaatblok heeft een kopieerknop
@@ -29,7 +29,7 @@ import json
 import pytest
 from playwright.sync_api import Page, expect
 
-BASE_URL = "http://localhost:3000"
+from tests.conftest import BASE_URL
 PROMPT_ROUTE = "**/api/prompt"
 SESSIONS_ROUTE = "**/api/sessions"
 

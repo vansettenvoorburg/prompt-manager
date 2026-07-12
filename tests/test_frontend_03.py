@@ -1,7 +1,7 @@
 """
 Frontend-tests voor story 03: sessie opslaan en laden.
 
-Vereist: de app draait op http://localhost:3000 (python app.py).
+Vereist: geen — de `server`-fixture (conftest.py) start de app automatisch op de testpoort.
 
 AC gedekt:
 - Invoerveld sessienaam en opslaan-knop zijn zichtbaar
@@ -18,7 +18,7 @@ import json
 import pytest
 from playwright.sync_api import Page, expect
 
-BASE_URL = "http://localhost:3000"
+from tests.conftest import BASE_URL
 SESSIONS_ROUTE = "**/api/sessions"
 SESSION_ITEM_ROUTE = "**/api/sessions/*"
 

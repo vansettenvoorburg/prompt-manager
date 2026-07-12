@@ -1,7 +1,7 @@
 """
 Frontend-tests voor story 04: logging.
 
-Vereist: de app draait op http://localhost:3000 (python app.py).
+Vereist: geen — de `server`-fixture (conftest.py) start de app automatisch op de testpoort.
 
 AC gedekt:
 - Na succesvolle aanvraag toont de UI een melding 'Log opgeslagen'
@@ -10,7 +10,7 @@ AC gedekt:
 import pytest
 from playwright.sync_api import Page, expect
 
-BASE_URL = "http://localhost:3000"
+from tests.conftest import BASE_URL
 PROMPT_ROUTE = "**/api/prompt"
 SESSIONS_ROUTE = "**/api/sessions"
 

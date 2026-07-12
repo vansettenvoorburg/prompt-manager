@@ -1,7 +1,7 @@
 """
 Frontend-tests voor story 09: Rate limiting — API-quota's respecteren.
 
-Vereist: de app draait op http://localhost:3000 (python app.py).
+Vereist: geen — de `server`-fixture (conftest.py) start de app automatisch op de testpoort.
 
 AC gedekt:
 - Er is een 'Instellingen'-tab in de navigatie
@@ -18,7 +18,7 @@ AC gedekt:
 import pytest
 from playwright.sync_api import Page, expect
 
-BASE_URL = "http://localhost:3000"
+from tests.conftest import BASE_URL
 SESSIONS_ROUTE = "**/api/sessions"
 SETTINGS_ROUTE = "**/api/settings"
 

@@ -1,7 +1,7 @@
 """
 Frontend-tests voor story 11: Groq-modelkeuze uitbreiden.
 
-Vereist: de app draait op http://localhost:3000 (python app.py).
+Vereist: geen — de `server`-fixture (conftest.py) start de app automatisch op de testpoort.
 
 Aannames over de UI (niet expliciet vastgelegd in de AC, hier gedocumenteerd
 zodat ze bij de implementatiesessie bevestigd kunnen worden):
@@ -28,7 +28,7 @@ import json
 import pytest
 from playwright.sync_api import Page, expect
 
-BASE_URL = "http://localhost:3000"
+from tests.conftest import BASE_URL
 SESSIONS_ROUTE = "**/api/sessions"
 SESSION_ITEM_ROUTE = "**/api/sessions/*"
 SETTINGS_ROUTE = "**/api/settings"

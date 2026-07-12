@@ -1,7 +1,7 @@
 """
 Frontend-tests voor story 07: Bijlage toevoegen aan een sessie.
 
-Vereist: de app draait op http://localhost:3000 (python app.py).
+Vereist: geen — de `server`-fixture (conftest.py) start de app automatisch op de testpoort.
 
 AC gedekt:
 - De UI toont een bestandskiezer-knop waarmee de gebruiker één bijlage kan selecteren
@@ -19,7 +19,7 @@ import pytest
 from pathlib import Path
 from playwright.sync_api import Page, expect
 
-BASE_URL = "http://localhost:3000"
+from tests.conftest import BASE_URL
 PROMPT_ROUTE = "**/api/prompt"
 SESSIONS_ROUTE = "**/api/sessions"
 SESSION_ITEM_ROUTE = "**/api/sessions/*"

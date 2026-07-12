@@ -2,10 +2,10 @@
 Integratietests voor story 08: Review pipeline — iteratief verbeteren.
 
 Deze tests draaien via een echte HTTP-verbinding tegen de draaiende server
-(http://localhost:3000). Ze controleren of verzoeken met reviewers de handler
+(zie BASE_URL in conftest.py). Ze controleren of verzoeken met reviewers de handler
 bereiken en niet worden afgewezen door FastAPI-routing of Pydantic-validatie.
 
-Vereist: python app.py draait op http://localhost:3000.
+Vereist: geen — de `server`-fixture (conftest.py) start de app automatisch op de testpoort.
 Worden overgeslagen als de server niet bereikbaar is.
 """
 import pytest
