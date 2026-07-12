@@ -2,10 +2,10 @@
 Integratietests voor story 07: Bijlage toevoegen aan een sessie.
 
 Deze tests draaien via een echte HTTP-verbinding tegen de draaiende server
-(http://localhost:3000). Ze controleren of verzoeken de handler bereiken —
+(zie BASE_URL in conftest.py). Ze controleren of verzoeken de handler bereiken —
 iets wat de ASGI-testclient niet vangt omdat die uvicorn omzeilt.
 
-Vereist: python app.py draait op http://localhost:3000.
+Vereist: geen — de `server`-fixture (conftest.py) start de app automatisch op de testpoort.
 Worden overgeslagen als de server niet bereikbaar is.
 """
 import json

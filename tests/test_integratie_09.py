@@ -2,10 +2,10 @@
 Integratietests voor story 09: Rate limiting — API-quota's respecteren.
 
 Deze tests draaien via een echte HTTP-verbinding tegen de draaiende server
-(http://localhost:3000). Ze controleren of /api/settings bereikbaar is,
+(zie BASE_URL in conftest.py). Ze controleren of /api/settings bereikbaar is,
 de juiste velden retourneert en schrijfoperaties correct verwerkt.
 
-Vereist: python app.py draait op http://localhost:3000.
+Vereist: geen — de `server`-fixture (conftest.py) start de app automatisch op de testpoort.
 """
 import pytest
 

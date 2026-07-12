@@ -1,3 +1,4 @@
+import os
 import subprocess
 import sys
 import time
@@ -38,7 +39,8 @@ def _maak_clipboard_schrijfbaar(request):
         return
     context.add_init_script(_CLIPBOARD_INIT_SCRIPT)
 
-BASE_URL = "http://localhost:3000"
+TEST_PORT = 3001
+BASE_URL = f"http://localhost:{TEST_PORT}"
 _server_process = None
 
 
@@ -59,19 +61,70 @@ def _wait_for_server(timeout: int = 15) -> None:
     raise RuntimeError(f"Server niet bereikbaar op {BASE_URL} na {timeout} seconden.")
 
 
-@pytest.fixture(scope="session", autouse=True)
-def server():
-    """Start de server als die nog niet draait. Stopt hem na de sessie als wij hem gestart hebben."""
-    global _server_process
+def _find_listening_pid(port: int) -> int | None:
+    result = subprocess.run(["netstat", "-ano"], capture_output=True, text=True)
+    for line in result.stdout.splitlines():
+        parts = line.split()
+        if len(parts) >= 5 and parts[0] == "TCP" and parts[-2] == "LISTENING":
+            local_addr = parts[1]
+            if local_addr.endswith(f":{port}"):
+                return int(parts[-1])
+    return None
 
-    if _server_is_running():
-        yield
+
+def _process_image_name(pid: int) -> str | None:
+    result = subprocess.run(
+        ["tasklist", "/FI", f"PID eq {pid}", "/NH", "/FO", "CSV"],
+        capture_output=True,
+        text=True,
+    )
+    line = result.stdout.strip().splitlines()[0] if result.stdout.strip() else ""
+    if not line.startswith('"'):
+        return None
+    return line.split('","')[0].strip('"')
+
+
+def _kill_stale_server(port: int = TEST_PORT, timeout: int = 5) -> None:
+    """Beëindig een verweesd proces op deze poort, zodat tests nooit tegen oude code draaien."""
+    pid = _find_listening_pid(port)
+    if pid is None:
         return
 
+    image_name = _process_image_name(pid)
+    if image_name is not None and image_name.lower() != "python.exe":
+        raise RuntimeError(
+            f"Poort {port} is in gebruik door proces {pid} ({image_name}), geen "
+            "python.exe — wordt niet automatisch gestopt."
+        )
+
+    subprocess.run(["taskkill", "/PID", str(pid), "/F"], capture_output=True)
+    deadline = time.time() + timeout
+    while time.time() < deadline:
+        if _find_listening_pid(port) is None:
+            return
+        time.sleep(0.2)
+
+    raise RuntimeError(
+        f"Kon proces {pid} op poort {port} niet stoppen binnen {timeout} seconden."
+    )
+
+
+@pytest.fixture(scope="session", autouse=True)
+def server():
+    """Start altijd een verse server-instantie op de testpoort (los van een eventuele
+    handmatig gestarte app op de standaardpoort). Beëindigt eerst een achtergebleven
+    proces op de testpoort."""
+    global _server_process
+
+    _kill_stale_server()
+
+    env = os.environ.copy()
+    env["PORT"] = str(TEST_PORT)
     _server_process = subprocess.Popen(
         [sys.executable, "app.py"],
         stdout=subprocess.DEVNULL,
         stderr=subprocess.DEVNULL,
+        env=env,
     )
 
     try:

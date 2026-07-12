@@ -1,7 +1,7 @@
 """
 Frontend-tests voor story 02: prompt samenstellen via acht velden.
 
-Vereist: de app draait op http://localhost:3000 (python app.py).
+Vereist: geen — de `server`-fixture (conftest.py) start de app automatisch op de testpoort.
 
 AC gedekt:
 - Formulier toont acht invulvelden met labels en placeholders
@@ -16,7 +16,7 @@ import threading
 import pytest
 from playwright.sync_api import Page, expect
 
-BASE_URL = "http://localhost:3000"
+from tests.conftest import BASE_URL
 OLLAMA_ROUTE = "**/api/prompt"
 
 VERPLICHTE_VELDEN = ("rol", "taak", "doel")

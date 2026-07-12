@@ -81,8 +81,18 @@ pip install -r requirements-test.txt
 playwright install
 ```
 
-Voer alle tests uit:
+Draai de suite altijd per categorie — een enkele ongefilterde `pytest`-aanroep combineert
+Playwright's sync API met async tests in dezelfde sessie, wat een
+`RuntimeError: Cannot run the event loop while another loop is running` kan veroorzaken.
+
+Backend- en integratietests (async, geen browser):
 
 ```
-pytest
+pytest -m "not frontend"
+```
+
+Frontend-tests (Playwright, browser):
+
+```
+pytest -m frontend
 ```

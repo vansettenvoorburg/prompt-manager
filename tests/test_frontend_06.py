@@ -1,7 +1,7 @@
 """
 Frontend-tests voor story 06: Aantal runs en temperature per run.
 
-Vereist: de app draait op http://localhost:3000 (python app.py).
+Vereist: geen — de `server`-fixture (conftest.py) start de app automatisch op de testpoort.
 
 AC gedekt:
 - De UI toont een invoerveld 'Aantal runs' met standaardwaarde 1
@@ -24,7 +24,7 @@ import json
 import pytest
 from playwright.sync_api import Page, expect
 
-BASE_URL = "http://localhost:3000"
+from tests.conftest import BASE_URL
 PROMPT_ROUTE = "**/api/prompt"
 SESSIONS_ROUTE = "**/api/sessions"
 SESSION_ITEM_ROUTE = "**/api/sessions/*"

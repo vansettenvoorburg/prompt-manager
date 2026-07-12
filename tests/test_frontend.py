@@ -1,7 +1,7 @@
 """
 Frontend-tests voor story 01: prompt invoeren en resultaat ontvangen via Ollama.
 
-Vereist: de app draait op http://localhost:3000 (python app.py).
+Vereist: geen — de `server`-fixture (conftest.py) start de app automatisch op de testpoort.
 
 AC gedekt:
 - AC 1: invoervelden zichtbaar
@@ -19,8 +19,7 @@ import threading
 import pytest
 from playwright.sync_api import Page, expect
 
-
-BASE_URL = "http://localhost:3000"
+from tests.conftest import BASE_URL
 OLLAMA_ROUTE = "**/api/prompt"
 
 
