@@ -47,6 +47,9 @@
 - [ ] Reviewer 1 ontvangt de output van de hoofdprompt en verbetert die
 - [ ] Elke volgende run of reviewer ontvangt de output van de vorige stap
 - [ ] De volgorde is: hoofdprompt → reviewer 1 run 1 → reviewer 1 run 2 → reviewer 2 run 1 → …
+- [ ] Bij meerdere hoofdruns (aantal runs > 1) krijgt elke hoofdrun zijn eigen, volledige reviewketen
+- [ ] De volgorde bij meerdere hoofdruns is: hoofdrun 1 → reviewketen van hoofdrun 1 (alle reviewers met al hun runs) → hoofdrun 2 → reviewketen van hoofdrun 2 → … → hoofdrun N → reviewketen van hoofdrun N
+- [ ] Elke hoofdrun wordt dus eerst volledig doorlopen (inclusief zijn eigen reviewers) voordat de volgende hoofdrun start — reviewers van verschillende hoofdruns worden niet gebundeld in een aparte fase
 
 **Resultaat**
 - [ ] De gebruiker ziet de uitvoer van elke stap afzonderlijk
