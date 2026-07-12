@@ -479,81 +479,89 @@ async def _voer_prompt_uit(
     if not body.reviewers:
         return {"runs": resultaten}
 
-    laatste_output = next(
-        (r["response"] for r in reversed(resultaten) if "response" in r), ""
-    )
     reviewer_stappen = []
-    vorige_output = laatste_output
+    eindoutput = ""
 
-    for reviewer_nr, reviewer in enumerate(body.reviewers, start=1):
-        for run_nummer in range(1, reviewer.runs + 1):
-            if reviewer.temperatures:
-                temperature = reviewer.temperatures[run_nummer - 1] if run_nummer <= len(reviewer.temperatures) else reviewer.temperatures[0]
-            else:
-                temperature = 0.7
-            reviewer_prompt = bouw_reviewer_prompt(
-                reviewer.rol, reviewer.omschrijving, body, vorige_output,
-                body.review_modus, bijlage_tekst,
-            )
+    for hoofdrun in resultaten:
+        if "response" not in hoofdrun:
+            continue
+        hoofdrun_nummer = hoofdrun["run_nummer"]
+        vorige_output = hoofdrun["response"]
 
-            if not is_eerste_request and delay > 0:
-                await asyncio.sleep(delay)
-            is_eerste_request = False
-
-            start = datetime.now()
-            try:
-                if provider == "groq":
-                    result, retries, retry_after_sec = await _roep_groq_aan_met_retry(
-                        reviewer_prompt, temperature, groq_model_gebruikt
-                    )
-                    model = groq_model_gebruikt
+        for reviewer_nr, reviewer in enumerate(body.reviewers, start=1):
+            for run_nummer in range(1, reviewer.runs + 1):
+                if reviewer.temperatures:
+                    temperature = reviewer.temperatures[run_nummer - 1] if run_nummer <= len(reviewer.temperatures) else reviewer.temperatures[0]
                 else:
-                    result = await call_ollama(reviewer_prompt, temperature)
-                    retries, retry_after_sec = 0, None
-                    model = OLLAMA_MODEL
-
-                duur = (datetime.now() - start).total_seconds()
-                log_pad, log_warning = _schrijf_reviewer_log(
-                    body, reviewer_nr, reviewer.rol, reviewer.omschrijving, run_nummer, temperature,
-                    reviewer_prompt, result, start, duur, model,
-                    rate_limit_retries=retries if retries > 0 else None,
-                    retry_after_seconden=retry_after_sec,
+                    temperature = 0.7
+                reviewer_prompt = bouw_reviewer_prompt(
+                    reviewer.rol, reviewer.omschrijving, body, vorige_output,
+                    body.review_modus, bijlage_tekst,
                 )
 
-                stap: dict = {
-                    "reviewer_nr": reviewer_nr,
-                    "reviewer_rol": reviewer.rol,
-                    "run_nummer": run_nummer,
-                    "temperature": temperature,
-                    "response": result,
-                }
-                if retries > 0:
-                    stap["rate_limit_retries"] = retries
-                if log_warning:
-                    stap["log_warning"] = log_warning
-                else:
-                    stap["log_status"] = "ok"
-                    stap["log_path"] = str(log_pad)
-                reviewer_stappen.append(stap)
-                vorige_output = result
+                if not is_eerste_request and delay > 0:
+                    await asyncio.sleep(delay)
+                is_eerste_request = False
 
-            except RateLimitError as exc:
-                reviewer_stappen.append({
-                    "reviewer_nr": reviewer_nr,
-                    "reviewer_rol": reviewer.rol,
-                    "run_nummer": run_nummer,
-                    "fout": str(exc),
-                    "rate_limit_retries": exc.retries,
-                })
-            except ConnectionError as exc:
-                reviewer_stappen.append({
-                    "reviewer_nr": reviewer_nr,
-                    "reviewer_rol": reviewer.rol,
-                    "run_nummer": run_nummer,
-                    "fout": str(exc),
-                })
+                start = datetime.now()
+                try:
+                    if provider == "groq":
+                        result, retries, retry_after_sec = await _roep_groq_aan_met_retry(
+                            reviewer_prompt, temperature, groq_model_gebruikt
+                        )
+                        model = groq_model_gebruikt
+                    else:
+                        result = await call_ollama(reviewer_prompt, temperature)
+                        retries, retry_after_sec = 0, None
+                        model = OLLAMA_MODEL
 
-    return {"runs": resultaten, "reviewer_stappen": reviewer_stappen, "eindoutput": vorige_output}
+                    duur = (datetime.now() - start).total_seconds()
+                    log_pad, log_warning = _schrijf_reviewer_log(
+                        body, reviewer_nr, reviewer.rol, reviewer.omschrijving, run_nummer, temperature,
+                        reviewer_prompt, result, start, duur, model,
+                        rate_limit_retries=retries if retries > 0 else None,
+                        retry_after_seconden=retry_after_sec,
+                    )
+
+                    stap: dict = {
+                        "hoofdrun_nummer": hoofdrun_nummer,
+                        "reviewer_nr": reviewer_nr,
+                        "reviewer_rol": reviewer.rol,
+                        "run_nummer": run_nummer,
+                        "temperature": temperature,
+                        "response": result,
+                    }
+                    if retries > 0:
+                        stap["rate_limit_retries"] = retries
+                    if log_warning:
+                        stap["log_warning"] = log_warning
+                    else:
+                        stap["log_status"] = "ok"
+                        stap["log_path"] = str(log_pad)
+                    reviewer_stappen.append(stap)
+                    vorige_output = result
+
+                except RateLimitError as exc:
+                    reviewer_stappen.append({
+                        "hoofdrun_nummer": hoofdrun_nummer,
+                        "reviewer_nr": reviewer_nr,
+                        "reviewer_rol": reviewer.rol,
+                        "run_nummer": run_nummer,
+                        "fout": str(exc),
+                        "rate_limit_retries": exc.retries,
+                    })
+                except ConnectionError as exc:
+                    reviewer_stappen.append({
+                        "hoofdrun_nummer": hoofdrun_nummer,
+                        "reviewer_nr": reviewer_nr,
+                        "reviewer_rol": reviewer.rol,
+                        "run_nummer": run_nummer,
+                        "fout": str(exc),
+                    })
+
+        eindoutput = vorige_output
+
+    return {"runs": resultaten, "reviewer_stappen": reviewer_stappen, "eindoutput": eindoutput}
 
 
 @app.get("/api/settings")
@@ -677,6 +685,9 @@ async def handle_prompt_upload(
     runs: Annotated[str, Form()] = "1",
     temperature_modus: Annotated[str, Form()] = "alle",
     temperatures: Annotated[str, Form()] = "[]",
+    reviewers: Annotated[str, Form()] = "[]",
+    review_modus: Annotated[str, Form()] = "iteratief",
+    model: Annotated[str | None, Form()] = None,
 ):
     bijlage_bestandsnaam = bijlage.filename
     extensie = Path(bijlage_bestandsnaam).suffix.lower() if bijlage_bestandsnaam else ""
@@ -718,6 +729,12 @@ async def handle_prompt_upload(
     except (json.JSONDecodeError, TypeError, ValueError):
         temperatures_list = []
 
+    try:
+        reviewers_data = json.loads(reviewers)
+        reviewers_list = [ReviewerConfig(**r) for r in reviewers_data] if isinstance(reviewers_data, list) else []
+    except (json.JSONDecodeError, TypeError, ValueError):
+        reviewers_list = []
+
     prompt_body = PromptRequest(
         rol=rol, taak=taak, doel=doel,
         formaat=formaat, stijl=stijl, scope=scope,
@@ -726,6 +743,9 @@ async def handle_prompt_upload(
         runs=runs_int,
         temperature_modus=temperature_modus,
         temperatures=temperatures_list,
+        reviewers=reviewers_list,
+        review_modus=review_modus,
+        model=model,
     )
 
     return await _voer_prompt_uit(prompt_body, bijlage_bestandsnaam, bijlage_tekst)

@@ -5,7 +5,6 @@ const errorEl = document.querySelector('[data-testid="error"]');
 const logStatusEl = document.querySelector('[data-testid="log-status"]');
 const logWarningEl = document.querySelector('[data-testid="log-warning"]');
 const runResultsEl = document.querySelector('[data-testid="run-results"]');
-const reviewerStappenListEl = document.querySelector('[data-testid="reviewer-stappen-lijst"]');
 const eindoutputEl = document.querySelector('[data-testid="eindoutput"]');
 const reviewerToevoegenKnop = document.getElementById('reviewer-toevoegen');
 const reviewerLijstEl = document.getElementById('reviewer-lijst');
@@ -78,8 +77,26 @@ function hideAll() {
   logStatusEl.classList.add('hidden');
   logWarningEl.classList.add('hidden');
   runResultsEl.classList.add('hidden');
-  reviewerStappenListEl.classList.add('hidden');
   eindoutputEl.classList.add('hidden');
+}
+
+let reviewerItemTeller = 0;
+
+function _maakReviewerVeld(labelTekst, input) {
+  reviewerItemTeller += 1;
+  const veldId = `reviewer-${input.getAttribute('data-testid')}-${reviewerItemTeller}`;
+  input.id = veldId;
+
+  const veld = document.createElement('div');
+  veld.classList.add('veld');
+
+  const label = document.createElement('label');
+  label.setAttribute('for', veldId);
+  label.textContent = labelTekst;
+
+  veld.appendChild(label);
+  veld.appendChild(input);
+  return veld;
 }
 
 function maakReviewerItem() {
@@ -115,10 +132,10 @@ function maakReviewerItem() {
   verwijderKnop.textContent = 'Verwijder';
   verwijderKnop.addEventListener('click', () => item.remove());
 
-  item.appendChild(rolInput);
-  item.appendChild(omschrijvingInput);
-  item.appendChild(runsInput);
-  item.appendChild(tempInput);
+  item.appendChild(_maakReviewerVeld('Reviewerrol', rolInput));
+  item.appendChild(_maakReviewerVeld('Reviewfocus (omschrijving)', omschrijvingInput));
+  item.appendChild(_maakReviewerVeld('Aantal runs', runsInput));
+  item.appendChild(_maakReviewerVeld('Temperatures', tempInput));
   item.appendChild(verwijderKnop);
   return item;
 }
@@ -154,30 +171,26 @@ function maakKopieerKnop(tekst) {
   return knop;
 }
 
-function renderReviewerStappen(stappen) {
-  reviewerStappenListEl.innerHTML = '';
-  for (const stap of stappen) {
-    const item = document.createElement('div');
-    item.setAttribute('data-testid', 'reviewer-stap-item');
-    item.classList.add('reviewer-stap');
-    if (stap.fout) {
-      item.textContent = `Reviewer ${stap.reviewer_nr} run ${stap.run_nummer}: Fout — ${stap.fout}`;
-    } else {
-      const header = document.createElement('div');
-      header.classList.add('run-header');
-      const label = document.createElement('span');
-      label.textContent = `Reviewer ${stap.reviewer_nr} (${stap.reviewer_rol}) — run ${stap.run_nummer} — temperature ${stap.temperature}`;
-      header.appendChild(label);
-      header.appendChild(maakKopieerKnop(stap.response || ''));
-      const body = document.createElement('div');
-      body.classList.add('run-body');
-      body.innerHTML = marked.parse(stap.response || '');
-      item.appendChild(header);
-      item.appendChild(body);
-    }
-    reviewerStappenListEl.appendChild(item);
+function maakReviewerStapItem(stap) {
+  const item = document.createElement('div');
+  item.setAttribute('data-testid', 'reviewer-stap-item');
+  item.classList.add('reviewer-stap');
+  if (stap.fout) {
+    item.textContent = `Reviewer ${stap.reviewer_nr} run ${stap.run_nummer}: Fout — ${stap.fout}`;
+  } else {
+    const header = document.createElement('div');
+    header.classList.add('run-header');
+    const label = document.createElement('span');
+    label.textContent = `Reviewer ${stap.reviewer_nr} (${stap.reviewer_rol}) — run ${stap.run_nummer} — temperature ${stap.temperature}`;
+    header.appendChild(label);
+    header.appendChild(maakKopieerKnop(stap.response || ''));
+    const body = document.createElement('div');
+    body.classList.add('run-body');
+    body.innerHTML = marked.parse(stap.response || '');
+    item.appendChild(header);
+    item.appendChild(body);
   }
-  reviewerStappenListEl.classList.remove('hidden');
+  return item;
 }
 
 function _getModus() {
@@ -240,10 +253,11 @@ function valideer() {
   return true;
 }
 
-function renderRunResultaten(runs) {
+function renderRunResultaten(runs, reviewerStappen) {
   runResultsEl.innerHTML = '';
   logStatusEl.classList.add('hidden');
   logWarningEl.classList.add('hidden');
+  const eersteRunNummer = runs.length > 0 ? runs[0].run_nummer : 1;
   for (const run of runs) {
     const item = document.createElement('div');
     item.classList.add('run-result');
@@ -276,6 +290,15 @@ function renderRunResultaten(runs) {
       item.appendChild(body);
     }
     runResultsEl.appendChild(item);
+
+    for (const stap of reviewerStappen || []) {
+      const hoortBijDezeRun = stap.hoofdrun_nummer !== undefined
+        ? stap.hoofdrun_nummer === run.run_nummer
+        : run.run_nummer === eersteRunNummer;
+      if (hoortBijDezeRun) {
+        runResultsEl.appendChild(maakReviewerStapItem(stap));
+      }
+    }
   }
   runResultsEl.classList.remove('hidden');
 }
@@ -612,10 +635,7 @@ button.addEventListener('click', async () => {
 
     const data = await response.json();
     if (response.ok) {
-      renderRunResultaten(data.runs);
-      if (data.reviewer_stappen && data.reviewer_stappen.length > 0) {
-        renderReviewerStappen(data.reviewer_stappen);
-      }
+      renderRunResultaten(data.runs, data.reviewer_stappen);
       if (data.eindoutput !== undefined) {
         eindoutputEl.innerHTML = '';
         const eindHeader = document.createElement('div');
