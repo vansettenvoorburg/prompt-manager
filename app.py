@@ -188,6 +188,33 @@ def bouw_reviewer_prompt(
     return "\n\n".join(delen)
 
 
+def _schrijf_logbestand(
+    provider: str,
+    sessie: str,
+    model: str,
+    start: datetime,
+    naamsuffix: str,
+    log_data: dict,
+    met_microseconden: bool = False,
+):
+    datum_tijd_formaat = "%Y-%m-%d_%H-%M-%S-%f" if met_microseconden else "%Y-%m-%d_%H-%M-%S"
+    datum_tijd = start.strftime(datum_tijd_formaat)
+    model_gesaneerd = _saneer_voor_bestandsnaam(model)
+    bestandsnaam = f"{datum_tijd}_{provider}_{model_gesaneerd}_{sessie}_{naamsuffix}.json"
+    try:
+        LOGS_DIR.mkdir(parents=True, exist_ok=True)
+    except OSError as exc:
+        return None, f"Logmap aanmaken mislukt: {exc}"
+    pad = LOGS_DIR / bestandsnaam
+    try:
+        pad.write_text(
+            json.dumps(log_data, ensure_ascii=False, indent=2), encoding="utf-8"
+        )
+    except OSError as exc:
+        return None, f"Logbestand schrijven mislukt: {exc}"
+    return pad, None
+
+
 def _schrijf_log(
     body: PromptRequest,
     prompt_tekst: str,
@@ -205,12 +232,8 @@ def _schrijf_log(
 ):
     provider = body.provider.lower()
     sessie = body.sessie.strip() or "geen-sessie"
-    timestamp = start.strftime("%Y-%m-%dT%H:%M:%S")
-    datum_tijd = start.strftime("%Y-%m-%d_%H-%M-%S")
-    model_gesaneerd = _saneer_voor_bestandsnaam(model)
-    bestandsnaam = f"{datum_tijd}_{provider}_{model_gesaneerd}_{sessie}_run{run_nummer}_t{temperature:g}.json"
     log_data = {
-        "timestamp": timestamp,
+        "timestamp": start.strftime("%Y-%m-%dT%H:%M:%S"),
         "provider": provider,
         "model": model,
         "model_bevestigd_door_groq": model_bevestigd,
@@ -237,18 +260,8 @@ def _schrijf_log(
         log_data["rate_limit_retries"] = rate_limit_retries
     if retry_after_seconden is not None:
         log_data["retry_after_seconden"] = retry_after_seconden
-    try:
-        LOGS_DIR.mkdir(parents=True, exist_ok=True)
-    except OSError as exc:
-        return None, f"Logmap aanmaken mislukt: {exc}"
-    pad = LOGS_DIR / bestandsnaam
-    try:
-        pad.write_text(
-            json.dumps(log_data, ensure_ascii=False, indent=2), encoding="utf-8"
-        )
-    except OSError as exc:
-        return None, f"Logbestand schrijven mislukt: {exc}"
-    return pad, None
+    naamsuffix = f"run{run_nummer}_t{temperature:g}"
+    return _schrijf_logbestand(provider, sessie, model, start, naamsuffix, log_data)
 
 
 def _schrijf_reviewer_log(
@@ -268,12 +281,8 @@ def _schrijf_reviewer_log(
 ):
     provider = body.provider.lower()
     sessie = body.sessie.strip() or "geen-sessie"
-    timestamp = start.strftime("%Y-%m-%dT%H:%M:%S")
-    datum_tijd = start.strftime("%Y-%m-%d_%H-%M-%S-%f")
-    model_gesaneerd = _saneer_voor_bestandsnaam(model)
-    bestandsnaam = f"{datum_tijd}_{provider}_{model_gesaneerd}_{sessie}_reviewer{reviewer_nr}_run{run_nummer}_t{temperature:g}.json"
     log_data = {
-        "timestamp": timestamp,
+        "timestamp": start.strftime("%Y-%m-%dT%H:%M:%S"),
         "provider": provider,
         "model": model,
         "sessie": sessie,
@@ -290,18 +299,8 @@ def _schrijf_reviewer_log(
         log_data["rate_limit_retries"] = rate_limit_retries
     if retry_after_seconden is not None:
         log_data["retry_after_seconden"] = retry_after_seconden
-    try:
-        LOGS_DIR.mkdir(parents=True, exist_ok=True)
-    except OSError as exc:
-        return None, f"Logmap aanmaken mislukt: {exc}"
-    pad = LOGS_DIR / bestandsnaam
-    try:
-        pad.write_text(
-            json.dumps(log_data, ensure_ascii=False, indent=2), encoding="utf-8"
-        )
-    except OSError as exc:
-        return None, f"Logbestand schrijven mislukt: {exc}"
-    return pad, None
+    naamsuffix = f"reviewer{reviewer_nr}_run{run_nummer}_t{temperature:g}"
+    return _schrijf_logbestand(provider, sessie, model, start, naamsuffix, log_data, met_microseconden=True)
 
 
 async def call_ollama(prompt: str, temperature: float) -> str:
@@ -370,6 +369,23 @@ async def _roep_groq_aan_met_retry(
             await asyncio.sleep(wacht)
 
 
+async def _roep_provider_aan(
+    provider: str, prompt: str, temperature: float, groq_model: str
+) -> tuple[str, str, int, float | None, str | None]:
+    if provider == "groq":
+        result, retries, retry_after_sec = await _roep_groq_aan_met_retry(
+            prompt, temperature, groq_model
+        )
+        model = groq_model
+        model_bevestigd = _laatst_bevestigd_groq_model.get()
+    else:
+        result = await call_ollama(prompt, temperature)
+        retries, retry_after_sec = 0, None
+        model = OLLAMA_MODEL
+        model_bevestigd = None
+    return result, model, retries, retry_after_sec, model_bevestigd
+
+
 async def _voer_prompt_uit(
     body: PromptRequest,
     bijlage_bestandsnaam: str | None = None,
@@ -432,17 +448,9 @@ async def _voer_prompt_uit(
         start = datetime.now()
 
         try:
-            model_bevestigd = None
-            if provider == "groq":
-                result, retries, retry_after_sec = await _roep_groq_aan_met_retry(
-                    prompt, temperature, groq_model_gebruikt
-                )
-                model = groq_model_gebruikt
-                model_bevestigd = _laatst_bevestigd_groq_model.get()
-            else:
-                result = await call_ollama(prompt, temperature)
-                retries, retry_after_sec = 0, None
-                model = OLLAMA_MODEL
+            result, model, retries, retry_after_sec, model_bevestigd = await _roep_provider_aan(
+                provider, prompt, temperature, groq_model_gebruikt
+            )
 
             duur = (datetime.now() - start).total_seconds()
             log_pad, log_warning = _schrijf_log(
@@ -505,15 +513,9 @@ async def _voer_prompt_uit(
 
                 start = datetime.now()
                 try:
-                    if provider == "groq":
-                        result, retries, retry_after_sec = await _roep_groq_aan_met_retry(
-                            reviewer_prompt, temperature, groq_model_gebruikt
-                        )
-                        model = groq_model_gebruikt
-                    else:
-                        result = await call_ollama(reviewer_prompt, temperature)
-                        retries, retry_after_sec = 0, None
-                        model = OLLAMA_MODEL
+                    result, model, retries, retry_after_sec, _ = await _roep_provider_aan(
+                        provider, reviewer_prompt, temperature, groq_model_gebruikt
+                    )
 
                     duur = (datetime.now() - start).total_seconds()
                     log_pad, log_warning = _schrijf_reviewer_log(
@@ -589,78 +591,6 @@ async def put_settings(body: SettingsModel):
 
 @app.post("/api/prompt")
 async def handle_prompt(request: Request):
-    content_type = request.headers.get("content-type", "")
-    if "multipart/form-data" in content_type:
-        form_data = await request.form()
-        bijlage = form_data.get("bijlage")
-        bijlage_bestandsnaam = None
-        bijlage_tekst = None
-
-        if bijlage is not None and hasattr(bijlage, "filename"):
-            bijlage_bestandsnaam = bijlage.filename
-            extensie = Path(bijlage_bestandsnaam).suffix.lower() if bijlage_bestandsnaam else ""
-            if extensie not in _ONDERSTEUNDE_EXTENSIES:
-                raise HTTPException(
-                    status_code=400,
-                    detail=f"Niet-ondersteund bestandstype: {extensie} — gebruik .txt, .md, .py, .js, .ts, .html, .css, .json, .pdf of .docx",
-                )
-            inhoud = await bijlage.read()
-            if not inhoud:
-                raise HTTPException(
-                    status_code=400,
-                    detail="Bijlage is leeg — upload een bestand met inhoud",
-                )
-            if extensie == ".pdf":
-                try:
-                    bijlage_tekst = extract_pdf_text(inhoud)
-                except Exception as exc:
-                    raise HTTPException(status_code=422, detail=f"Bijlage kon niet worden gelezen: {exc}")
-            elif extensie == ".docx":
-                try:
-                    bijlage_tekst = extract_docx_text(inhoud)
-                except Exception as exc:
-                    raise HTTPException(status_code=422, detail=f"Bijlage kon niet worden gelezen: {exc}")
-            else:
-                bijlage_tekst = inhoud.decode("utf-8", errors="replace")
-
-        try:
-            runs_int = int(form_data.get("runs", "1"))
-        except (ValueError, TypeError):
-            runs_int = 1
-        temperatures_str = form_data.get("temperatures", "[]")
-        try:
-            temps_parsed = json.loads(temperatures_str)
-            temperatures_list = temps_parsed if isinstance(temps_parsed, list) else [float(temps_parsed)]
-        except (json.JSONDecodeError, TypeError, ValueError):
-            temperatures_list = []
-
-        reviewers_str = form_data.get("reviewers", "[]")
-        try:
-            reviewers_data = json.loads(reviewers_str)
-            reviewers_list = [ReviewerConfig(**r) for r in reviewers_data] if isinstance(reviewers_data, list) else []
-        except (json.JSONDecodeError, TypeError, ValueError):
-            reviewers_list = []
-
-        body = PromptRequest(
-            rol=form_data.get("rol", ""),
-            taak=form_data.get("taak", ""),
-            doel=form_data.get("doel", ""),
-            formaat=form_data.get("formaat", ""),
-            stijl=form_data.get("stijl", ""),
-            scope=form_data.get("scope", ""),
-            eisen=form_data.get("eisen", ""),
-            voorbeelden=form_data.get("voorbeelden", ""),
-            sessie=form_data.get("sessie", ""),
-            provider=form_data.get("provider", "ollama"),
-            runs=runs_int,
-            temperature_modus=form_data.get("temperature_modus", "alle"),
-            temperatures=temperatures_list,
-            reviewers=reviewers_list,
-            review_modus=form_data.get("review_modus", "iteratief"),
-            model=form_data.get("model"),
-        )
-        return await _voer_prompt_uit(body, bijlage_bestandsnaam, bijlage_tekst)
-
     body_data = await request.json()
     try:
         body = PromptRequest(**body_data)

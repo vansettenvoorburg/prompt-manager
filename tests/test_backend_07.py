@@ -81,7 +81,7 @@ async def test_tekst_bestandstype_wordt_geaccepteerd(client, logs_dir, bestandsn
     """Tekst- en codebestanden worden geaccepteerd en geven HTTP 200."""
     with patch("app.call_ollama", new_callable=AsyncMock, return_value="antwoord"):
         response = await client.post(
-            "/api/prompt",
+            "/api/prompt/upload",
             data={k: str(v) for k, v in BASE_PAYLOAD.items()},
             files={"bijlage": (bestandsnaam, b"inhoud van het bestand", "text/plain")},
         )
@@ -96,7 +96,7 @@ async def test_pdf_bestand_wordt_geaccepteerd(client, logs_dir):
     with patch("app.call_ollama", new_callable=AsyncMock, return_value="antwoord"), \
          patch("app.extract_pdf_text", return_value="tekst uit PDF"):
         response = await client.post(
-            "/api/prompt",
+            "/api/prompt/upload",
             data={k: str(v) for k, v in BASE_PAYLOAD.items()},
             files={"bijlage": ("document.pdf", pdf_inhoud, "application/pdf")},
         )
@@ -108,7 +108,7 @@ async def test_docx_bestand_wordt_geaccepteerd(client, logs_dir):
     with patch("app.call_ollama", new_callable=AsyncMock, return_value="antwoord"), \
          patch("app.extract_docx_text", return_value="tekst uit Word"):
         response = await client.post(
-            "/api/prompt",
+            "/api/prompt/upload",
             data={k: str(v) for k, v in BASE_PAYLOAD.items()},
             files={"bijlage": ("verslag.docx", b"nep-docx-inhoud", "application/octet-stream")},
         )
@@ -122,7 +122,7 @@ async def test_docx_bestand_wordt_geaccepteerd(client, logs_dir):
 async def test_niet_ondersteund_type_geeft_400(client):
     """Een niet-ondersteund bestandstype retourneert HTTP 400."""
     response = await client.post(
-        "/api/prompt",
+        "/api/prompt/upload",
         data={k: str(v) for k, v in BASE_PAYLOAD.items()},
         files={"bijlage": ("foto.png", b"nep-afbeelding", "image/png")},
     )
@@ -132,7 +132,7 @@ async def test_niet_ondersteund_type_geeft_400(client):
 async def test_niet_ondersteund_type_foutmelding_vermeldt_extensie(client):
     """De foutmelding bij een niet-ondersteund type vermeldt de extensie."""
     response = await client.post(
-        "/api/prompt",
+        "/api/prompt/upload",
         data={k: str(v) for k, v in BASE_PAYLOAD.items()},
         files={"bijlage": ("foto.png", b"nep-afbeelding", "image/png")},
     )
@@ -143,7 +143,7 @@ async def test_niet_ondersteund_type_foutmelding_vermeldt_extensie(client):
 async def test_niet_ondersteund_type_foutmelding_vermeldt_ondersteunde_types(client):
     """De foutmelding bij een niet-ondersteund type vermeldt welke extensies wel geldig zijn."""
     response = await client.post(
-        "/api/prompt",
+        "/api/prompt/upload",
         data={k: str(v) for k, v in BASE_PAYLOAD.items()},
         files={"bijlage": ("data.xlsx", b"nep-excel", "application/octet-stream")},
     )
@@ -160,7 +160,7 @@ async def test_niet_ondersteund_type_foutmelding_vermeldt_ondersteunde_types(cli
 async def test_leeg_bestand_geeft_400(client):
     """Een leeg geüpload bestand retourneert HTTP 400."""
     response = await client.post(
-        "/api/prompt",
+        "/api/prompt/upload",
         data={k: str(v) for k, v in BASE_PAYLOAD.items()},
         files={"bijlage": ("leeg.txt", b"", "text/plain")},
     )
@@ -170,7 +170,7 @@ async def test_leeg_bestand_geeft_400(client):
 async def test_leeg_bestand_foutmelding(client):
     """De foutmelding bij een leeg bestand is de verwachte tekst."""
     response = await client.post(
-        "/api/prompt",
+        "/api/prompt/upload",
         data={k: str(v) for k, v in BASE_PAYLOAD.items()},
         files={"bijlage": ("leeg.txt", b"", "text/plain")},
     )
@@ -186,7 +186,7 @@ async def test_pdf_extractiefout_geeft_422(client):
     """Als PDF-extractie mislukt, retourneert de backend HTTP 422."""
     with patch("app.extract_pdf_text", side_effect=Exception("corrupt bestand")):
         response = await client.post(
-            "/api/prompt",
+            "/api/prompt/upload",
             data={k: str(v) for k, v in BASE_PAYLOAD.items()},
             files={"bijlage": ("document.pdf", b"%PDF-nep", "application/pdf")},
         )
@@ -197,7 +197,7 @@ async def test_pdf_extractiefout_foutmelding_vermeldt_reden(client):
     """De foutmelding bij een PDF-extractiefout bevat de reden."""
     with patch("app.extract_pdf_text", side_effect=Exception("corrupt bestand")):
         response = await client.post(
-            "/api/prompt",
+            "/api/prompt/upload",
             data={k: str(v) for k, v in BASE_PAYLOAD.items()},
             files={"bijlage": ("document.pdf", b"%PDF-nep", "application/pdf")},
         )
@@ -209,7 +209,7 @@ async def test_docx_extractiefout_geeft_422(client):
     """Als Word-extractie mislukt, retourneert de backend HTTP 422."""
     with patch("app.extract_docx_text", side_effect=Exception("onleesbaar bestand")):
         response = await client.post(
-            "/api/prompt",
+            "/api/prompt/upload",
             data={k: str(v) for k, v in BASE_PAYLOAD.items()},
             files={"bijlage": ("verslag.docx", b"nep-docx", "application/octet-stream")},
         )
@@ -220,7 +220,7 @@ async def test_extractiefout_maakt_geen_logbestand(client, logs_dir):
     """Bij een extractiefout in de bijlageverwerking wordt geen logbestand aangemaakt."""
     with patch("app.extract_pdf_text", side_effect=Exception("corrupt")):
         await client.post(
-            "/api/prompt",
+            "/api/prompt/upload",
             data={k: str(v) for k, v in BASE_PAYLOAD.items()},
             files={"bijlage": ("document.pdf", b"%PDF-nep", "application/pdf")},
         )
@@ -241,7 +241,7 @@ async def test_bijlage_tekst_staat_in_prompt(client, logs_dir):
 
     with patch("app.call_ollama", side_effect=vang_prompt):
         await client.post(
-            "/api/prompt",
+            "/api/prompt/upload",
             data={k: str(v) for k, v in BASE_PAYLOAD.items()},
             files={"bijlage": ("notities.txt", b"dit zijn mijn notities", "text/plain")},
         )
@@ -262,7 +262,7 @@ async def test_bijlage_staat_aan_het_einde_van_prompt(client, logs_dir):
 
     with patch("app.call_ollama", side_effect=vang_prompt):
         await client.post(
-            "/api/prompt",
+            "/api/prompt/upload",
             data={k: str(v) for k, v in BASE_PAYLOAD.items()},
             files={"bijlage": ("notities.txt", b"bijlagetekst", "text/plain")},
         )
@@ -300,7 +300,7 @@ async def test_logbestand_bevat_bijlage_bestandsnaam(client, logs_dir):
     """Het logbestand bevat het veld 'bijlage_bestandsnaam' als string."""
     with patch("app.call_ollama", new_callable=AsyncMock, return_value="antwoord"):
         await client.post(
-            "/api/prompt",
+            "/api/prompt/upload",
             data={k: str(v) for k, v in BASE_PAYLOAD.items()},
             files={"bijlage": ("notities.txt", b"inhoud", "text/plain")},
         )
@@ -314,7 +314,7 @@ async def test_logbestand_bevat_bijlage_tekst(client, logs_dir):
     """Het logbestand bevat het veld 'bijlage_tekst' met de geëxtraheerde tekst."""
     with patch("app.call_ollama", new_callable=AsyncMock, return_value="antwoord"):
         await client.post(
-            "/api/prompt",
+            "/api/prompt/upload",
             data={k: str(v) for k, v in BASE_PAYLOAD.items()},
             files={"bijlage": ("notities.txt", b"dit zijn mijn notities", "text/plain")},
         )
@@ -355,7 +355,7 @@ async def test_logbestandsnaam_verandert_niet_door_bijlage(client, logs_dir):
 
     with patch("app.call_ollama", new_callable=AsyncMock, return_value="antwoord"):
         await client.post(
-            "/api/prompt",
+            "/api/prompt/upload",
             data={k: str(v) for k, v in BASE_PAYLOAD.items()},
             files={"bijlage": ("notities.txt", b"inhoud", "text/plain")},
         )
