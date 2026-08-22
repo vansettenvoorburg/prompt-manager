@@ -744,7 +744,11 @@ async def get_session(name: str):
     return data
 
 
-app.mount("/", StaticFiles(directory="static", html=True), name="static")
+app.mount(
+    "/",
+    StaticFiles(directory=Path(__file__).parent / "static", html=True),
+    name="static",
+)
 
 if __name__ == "__main__":
     poort = int(os.environ.get("PORT", "3000"))
