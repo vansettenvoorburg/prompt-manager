@@ -152,24 +152,35 @@ om deze te gebruiken i.p.v. eigen `_vul_verplichte_velden`, `_kies_groq`, `go_to
 en losse `GROQ_MODEL_DEFAULT`/`_STUB_SETTINGS`-kopieën. Testcodes, AC-verwijzingen en assertions
 zijn ongewijzigd gebleven. Geverifieerd: `python -m pytest tests/playwright/ -q` → **146 passed**.
 
-### Nog open: selectorstrategie
+### Afgerond: selectorstrategie (2026-08-22)
 
-`development/static/index.html` heeft voor elk veld een correct `<label for="...">`
-(rol, taak, doel, provider, groq-model, runs, temperature, …), maar de POM-locators in
-`prompt_page.py` en de componenten wijzen nog naar CSS-attribuutselectors
-(`page.locator("[name=rol]")`, `page.locator("[data-testid=provider-select]")`) i.p.v.
-`page.get_by_label(...)`. Dankzij de POM-refactor hoeft dit nu maar op één plek te worden
-aangepast (de locator-definities), niet meer in 21 bestanden.
-Let op: niet elk element heeft een unieke label-tekst (bijv. `session-select` vs.
-`sessions-list`) — daar blijft `data-testid` een bewuste keuze.
+`prompt_page.py` en de componenten (`sessions_sidebar.py`, `settings_panel.py`) gebruikten
+CSS-attribuutselectors (`page.locator("[name=rol]")`, `page.locator("[data-testid=...]")`)
+i.p.v. de bedoelde Playwright-locator-API. Twee aparte fixes:
 
-### Nog open: hard wait
+- **Labels:** velden met een echt `<label for="...">` in `index.html` (rol, taak, doel,
+  formaat, stijl, scope, eisen, voorbeelden, provider, groq-model, review-modus,
+  temperature-modus-alle/per-run, bijlage-input, session-name, groq-rpm, google-rpm) zijn
+  omgezet naar `page.get_by_label(..., exact=True)`.
+  Uitzondering, bewust op `data-testid` gelaten: `runs_input` en `temperature_input` —
+  hun labeltekst ("Aantal runs" resp. "Temperatures") komt letterlijk terug in elk
+  reviewer-item (`reviewer_list.py`), dus `get_by_label` is niet uniek zodra een reviewer
+  is toegevoegd. Zelfde categorie als de eerder genoemde `session-select`/`sessions-list`
+  (geen label, dus `data-testid` terecht).
+- **Test-id's:** alle resterende `page.locator("[data-testid=...])"`/`root.locator(...)`
+  zijn omgezet naar `page.get_by_test_id(...)` / `root.get_by_test_id(...)` (ook `Locator`
+  ondersteunt deze methode, dus chaining voor het samengestelde geval
+  (`eerste_kopieer_knop`) werkt: `get_by_test_id(binnen).get_by_test_id("kopieer-knop")`).
+  Dit was eerder over het hoofd gezien: een CSS-attribuutselector op `data-testid` is nog
+  steeds tier 4, niet tier 3, ook al richt hij zich toevallig op een testid-attribuut.
+  De `playwright-testing`-skill is aangevuld met een expliciete waarschuwing hierover
+  (grep op `\[data-testid=` bij een selectorstrategie-review).
+
+Geverifieerd: `python -m pytest tests/playwright -q` → 146 passed, 3x achter elkaar groen.
+
+### Afgerond: hard wait (2026-08-22)
 
 `tests/playwright/interactie/test_resultaten_en_kopieren.py`,
-`test_kopieerknop_tekst_keert_terug_na_2_seconden`:
-```python
-app.page.wait_for_timeout(2200)
-expect(knop).to_have_text(originele_tekst)
-```
-`expect(knop).to_have_text(...)` pollt/retryt al zelf — de vaste 2.2s-sleep ervoor is dode
-tijd en fragiel. Fix: verwijder de `wait_for_timeout`-regel.
+`test_kopieerknop_tekst_keert_terug_na_2_seconden`: `wait_for_timeout(2200)` vóór de
+assertie verwijderd; `expect(knop).to_have_text(originele_tekst, timeout=3000)` pollt zelf
+tot de knoptekst terugkeert. Geverifieerd: beide tests in dit bestand groen.

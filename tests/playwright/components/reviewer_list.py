@@ -5,11 +5,11 @@ from playwright.sync_api import Locator, Page, expect
 class ReviewerItem:
     def __init__(self, root: Locator):
         self.root = root
-        self.rol_input = root.locator("[data-testid=reviewer-rol]")
-        self.omschrijving_input = root.locator("[data-testid=reviewer-omschrijving]")
-        self.runs_input = root.locator("[data-testid=reviewer-runs]")
-        self.temperatures_input = root.locator("[data-testid=reviewer-temperatures]")
-        self.verwijder_knop = root.locator("[data-testid=reviewer-verwijder]")
+        self.rol_input = root.get_by_test_id("reviewer-rol")
+        self.omschrijving_input = root.get_by_test_id("reviewer-omschrijving")
+        self.runs_input = root.get_by_test_id("reviewer-runs")
+        self.temperatures_input = root.get_by_test_id("reviewer-temperatures")
+        self.verwijder_knop = root.get_by_test_id("reviewer-verwijder")
 
     # --- Actions ---
     def fill_rol(self, waarde: str) -> None:
@@ -54,8 +54,8 @@ class ReviewerItem:
 class ReviewerList:
     def __init__(self, page: Page):
         self.page = page
-        self.toevoegen_knop = page.locator("[data-testid=reviewer-toevoegen]")
-        self.items = page.locator("[data-testid=reviewer-item]")
+        self.toevoegen_knop = page.get_by_test_id("reviewer-toevoegen")
+        self.items = page.get_by_test_id("reviewer-item")
 
     # --- Actions ---
     def toevoegen(self) -> ReviewerItem:

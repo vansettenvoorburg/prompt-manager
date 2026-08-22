@@ -14,14 +14,14 @@ class PromptPage:
         self.instellingen = SettingsPanel(page)
         self.reviewers = ReviewerList(page)
 
-        self.rol_input = page.locator("[name=rol]")
-        self.taak_input = page.locator("[name=taak]")
-        self.doel_input = page.locator("[name=doel]")
-        self.formaat_input = page.locator("[name=formaat]")
-        self.stijl_input = page.locator("[name=stijl]")
-        self.scope_input = page.locator("[name=scope]")
-        self.eisen_input = page.locator("[name=eisen]")
-        self.voorbeelden_input = page.locator("[name=voorbeelden]")
+        self.rol_input = page.get_by_label("Rol *", exact=True)
+        self.taak_input = page.get_by_label("Taak *", exact=True)
+        self.doel_input = page.get_by_label("Doel *", exact=True)
+        self.formaat_input = page.get_by_label("Formaat", exact=True)
+        self.stijl_input = page.get_by_label("Stijl", exact=True)
+        self.scope_input = page.get_by_label("Scope", exact=True)
+        self.eisen_input = page.get_by_label("Extra eisen", exact=True)
+        self.voorbeelden_input = page.get_by_label("Voorbeelden", exact=True)
         self._veld_inputs = {
             "rol": self.rol_input,
             "taak": self.taak_input,
@@ -33,32 +33,35 @@ class PromptPage:
             "voorbeelden": self.voorbeelden_input,
         }
 
-        self.provider_select = page.locator("[data-testid=provider-select]")
-        self.groq_model_select = page.locator("[data-testid=groq-model-select]")
-        self.runs_input = page.locator("[data-testid=runs-input]")
-        self.temperature_input = page.locator("[data-testid=temperature-input]")
-        self.temperature_modus_alle = page.locator("[data-testid=temperature-modus-alle]")
-        self.temperature_modus_per_run = page.locator("[data-testid=temperature-modus-per-run]")
-        self.temperature_modus = page.locator("[data-testid=temperature-modus]")
-        self.temperature_label = page.locator("[data-testid=temperature-label]")
+        self.provider_select = page.get_by_label("Provider", exact=True)
+        self.groq_model_select = page.get_by_label("Model", exact=True)
+        # runs/temperature blijven op data-testid: het label "Aantal runs" resp.
+        # "Temperatures" komt letterlijk terug in elk reviewer-item (reviewer_list.py),
+        # dus get_by_label is daar niet uniek zodra een reviewer is toegevoegd.
+        self.runs_input = page.get_by_test_id("runs-input")
+        self.temperature_input = page.get_by_test_id("temperature-input")
+        self.temperature_modus_alle = page.get_by_label("Één temperature voor alle runs", exact=True)
+        self.temperature_modus_per_run = page.get_by_label("Één temperature per run (komma-gescheiden)", exact=True)
+        self.temperature_modus = page.get_by_test_id("temperature-modus")
+        self.temperature_label = page.get_by_test_id("temperature-label")
 
-        self.bijlage_input = page.locator("[data-testid=bijlage-input]")
-        self.bijlage_status = page.locator("[data-testid=bijlage-status]")
-        self.bijlage_verwijder_knop = page.locator("[data-testid=bijlage-verwijder]")
+        self.bijlage_input = page.get_by_label("Kies bestand", exact=True)
+        self.bijlage_status = page.get_by_test_id("bijlage-status")
+        self.bijlage_verwijder_knop = page.get_by_test_id("bijlage-verwijder")
 
-        self.review_modus_select = page.locator("[data-testid=review-modus-select]")
+        self.review_modus_select = page.get_by_label("Reviewmodus", exact=True)
         self.verstuur_knop = page.get_by_role("button", name="Verstuur")
 
-        self.tab_prompt = page.locator("[data-testid=tab-prompt]")
-        self.tab_instellingen = page.locator("[data-testid=tab-instellingen]")
+        self.tab_prompt = page.get_by_test_id("tab-prompt")
+        self.tab_instellingen = page.get_by_test_id("tab-instellingen")
 
-        self.loading = page.locator("[data-testid=loading]")
-        self.response = page.locator("[data-testid=response]")
-        self.run_results = page.locator("[data-testid=run-results]")
-        self.eindoutput = page.locator("[data-testid=eindoutput]")
-        self.error = page.locator("[data-testid=error]")
-        self.log_status = page.locator("[data-testid=log-status]")
-        self.log_warning = page.locator("[data-testid=log-warning]")
+        self.loading = page.get_by_test_id("loading")
+        self.response = page.get_by_test_id("response")
+        self.run_results = page.get_by_test_id("run-results")
+        self.eindoutput = page.get_by_test_id("eindoutput")
+        self.error = page.get_by_test_id("error")
+        self.log_status = page.get_by_test_id("log-status")
+        self.log_warning = page.get_by_test_id("log-warning")
 
     # --- Actions ---
     def open(self, base_url: str) -> None:
@@ -118,7 +121,7 @@ class PromptPage:
         )
 
     def eerste_kopieer_knop(self, binnen: str = "run-results"):
-        return self.page.locator(f"[data-testid={binnen}] [data-testid=kopieer-knop]").first
+        return self.page.get_by_test_id(binnen).get_by_test_id("kopieer-knop").first
 
     # --- Validations ---
     def expect_veld_zichtbaar(self, veld: str) -> None:
@@ -128,7 +131,7 @@ class PromptPage:
         expect(self._veld_inputs[veld]).to_have_value(waarde)
 
     def expect_validation_zichtbaar(self, veld: str) -> None:
-        expect(self.page.locator(f"[data-testid=validation-{veld}]")).to_be_visible()
+        expect(self.page.get_by_test_id(f"validation-{veld}")).to_be_visible()
 
     def expect_error_zichtbaar(self) -> None:
         expect(self.error).to_be_visible()
@@ -155,7 +158,7 @@ class PromptPage:
         expect(self.eindoutput).to_be_visible()
 
     def expect_reviewer_stap_zichtbaar(self) -> None:
-        expect(self.page.locator("[data-testid=reviewer-stap-item]").first).to_be_visible()
+        expect(self.page.get_by_test_id("reviewer-stap-item").first).to_be_visible()
 
     def expect_loading_zichtbaar(self) -> None:
         expect(self.loading).to_be_visible()

@@ -59,5 +59,4 @@ def test_kopieerknop_tekst_keert_terug_na_2_seconden(app: PromptPage):
     originele_tekst = knop.inner_text()
     knop.click()
 
-    app.page.wait_for_timeout(2200)
-    expect(knop).to_have_text(originele_tekst)
+    expect(knop).to_have_text(originele_tekst, timeout=3000)

@@ -48,7 +48,7 @@ def test_optionele_velden_worden_meegestuurd_in_api_call(app: PromptPage):
     app.fill_veld("formaat", "markdown")
     app.verstuur()
 
-    app.page.wait_for_selector("[data-testid=run-results]")
+    app.run_results.wait_for()
     assert captured_body.get("formaat") == "markdown"
 
 

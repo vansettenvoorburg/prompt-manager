@@ -5,18 +5,18 @@ from playwright.sync_api import Page, expect
 class SessionsSidebar:
     def __init__(self, page: Page):
         self.page = page
-        self.naam_input = page.locator("[name=session-name]")
+        self.naam_input = page.get_by_label("Sessienaam", exact=True)
         self.opslaan_knop = page.get_by_role("button", name="Opslaan")
-        self.save_confirmation = page.locator("[data-testid=save-confirmation]")
-        self.save_error = page.locator("[data-testid=save-error]")
-        self.load_error = page.locator("[data-testid=load-error]")
-        self.session_select = page.locator("[data-testid=session-select]")
-        self.sessions_list = page.locator("[data-testid=sessions-list]")
-        self.sessions_empty = page.locator("[data-testid=sessions-empty]")
-        self.overwrite_dialog = page.locator("[data-testid=overwrite-dialog]")
+        self.save_confirmation = page.get_by_test_id("save-confirmation")
+        self.save_error = page.get_by_test_id("save-error")
+        self.load_error = page.get_by_test_id("load-error")
+        self.session_select = page.get_by_test_id("session-select")
+        self.sessions_list = page.get_by_test_id("sessions-list")
+        self.sessions_empty = page.get_by_test_id("sessions-empty")
+        self.overwrite_dialog = page.get_by_test_id("overwrite-dialog")
         self.bevestig_overschrijven_knop = page.get_by_role("button", name="Ja, overschrijven")
         self.annuleer_overschrijven_knop = page.get_by_role("button", name="Annuleren")
-        self.validation_session_name = page.locator("[data-testid=validation-session-name]")
+        self.validation_session_name = page.get_by_test_id("validation-session-name")
 
     # --- Actions ---
     def fill_naam(self, naam: str) -> None:

@@ -5,13 +5,13 @@ from playwright.sync_api import Page, expect
 class SettingsPanel:
     def __init__(self, page: Page):
         self.page = page
-        self.root = page.locator("[data-testid=instellingen-paneel]")
-        self.groq_rpm_input = page.locator("[data-testid=groq-rpm-input]")
-        self.google_rpm_input = page.locator("[data-testid=google-rpm-input]")
-        self.ollama_rpm_input = page.locator("[data-testid=ollama-rpm-input]")
+        self.root = page.get_by_test_id("instellingen-paneel")
+        self.groq_rpm_input = page.get_by_label("Groq RPM (requests per minuut)", exact=True)
+        self.google_rpm_input = page.get_by_label("Google RPM (requests per minuut)", exact=True)
+        self.ollama_rpm_input = page.get_by_test_id("ollama-rpm-input")
         self.opslaan_knop = page.get_by_role("button", name="Instellingen opslaan")
-        self.bevestiging = page.locator("[data-testid=instellingen-bevestiging]")
-        self.fout = page.locator("[data-testid=instellingen-fout]")
+        self.bevestiging = page.get_by_test_id("instellingen-bevestiging")
+        self.fout = page.get_by_test_id("instellingen-fout")
 
     # --- Actions ---
     def fill_groq_rpm(self, waarde: str) -> None:
