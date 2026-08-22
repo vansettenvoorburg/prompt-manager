@@ -48,7 +48,7 @@ Open `.env` en vul eventueel je eigen waarden in:
 ## App starten
 
 ```
-python app.py
+python development/app.py
 ```
 
 Open daarna `http://localhost:3000` in je browser.

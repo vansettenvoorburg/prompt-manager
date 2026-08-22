@@ -2,10 +2,13 @@ import os
 import subprocess
 import sys
 import time
+from pathlib import Path
 
 import httpx
 import pytest
 from httpx import AsyncClient, ASGITransport
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "development"))
 
 _CLIPBOARD_INIT_SCRIPT = """
 (function () {
@@ -128,7 +131,7 @@ def server():
     env = os.environ.copy()
     env["PORT"] = str(TEST_PORT)
     _server_process = subprocess.Popen(
-        [sys.executable, "app.py"],
+        [sys.executable, "development/app.py"],
         stdout=subprocess.DEVNULL,
         stderr=subprocess.DEVNULL,
         env=env,

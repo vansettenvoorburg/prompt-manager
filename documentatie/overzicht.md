@@ -176,7 +176,7 @@ De modus (iteratief of alleen loggen) is instelbaar per sessie:
 - **Backend**: Python met FastAPI
 - **Frontend**: HTML + Vanilla JS (geen framework, minimale dependencies)
 - **Opslag**: JSON-bestanden voor sessies en outputs, `.env` voor API keys
-- **Starten**: één commando — `python app.py`
+- **Starten**: één commando — `python development/app.py`
 - **Gebruik**: via de browser op `http://localhost:3000`
 
 Python is gekozen omdat Ollama, Groq en Google AI Studio alle drie uitstekende Python SDK's en documentatie hebben. Als je later iets toevoegt of een bug oplost via Claude Code, zijn Python-voorbeelden het meest beschikbaar.
@@ -190,16 +190,17 @@ Python is gekozen omdat Ollama, Groq en Google AI Studio alle drie uitstekende P
 
 ```
 prompt-sessie-manager/
-├── app.py                      # backend server (FastAPI)
+├── development/
+│   ├── app.py                  # backend server (FastAPI)
+│   └── static/
+│       ├── index.html
+│       ├── style.css
+│       └── app.js
 ├── requirements.txt            # Python dependencies
 ├── .env                        # API keys (niet in versiebeheer)
 ├── .env.example                # voorbeeld zonder keys
 ├── sessions/                   # opgeslagen sessies als JSON
 ├── outputs/                    # opgeslagen resultaten
-├── static/
-│   ├── index.html
-│   ├── style.css
-│   └── app.js
 └── README.md
 ```
 
@@ -337,7 +338,7 @@ Zonder keys werkt de tool al volledig via Ollama.
 ### Dagelijks gebruik
 
 ```bash
-python app.py
+python development/app.py
 # open http://localhost:3000
 ```
 
