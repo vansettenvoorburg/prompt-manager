@@ -33,19 +33,13 @@ const groqModelSelectEl = document.querySelector('[data-testid="groq-model-selec
 const PROVIDER_DEFAULTS = { ollama: '0.8', groq: '1' };
 let temperatureHandmatigGewijzigd = false;
 
-const GROQ_MODELS_NIEUW = [
-  'openai/gpt-oss-120b',
-  'openai/gpt-oss-20b',
-  'moonshotai/kimi-k2-instruct',
-  'qwen3-32b',
-];
 let groqModelEnvDefault = 'llama3-8b-8192';
 
-function vulGroqModelDropdown(envDefault) {
+function vulGroqModelDropdown(envDefault, beschikbareModellen) {
   groqModelEnvDefault = envDefault;
   const huidigeWaarde = groqModelSelectEl.value;
   groqModelSelectEl.innerHTML = '';
-  const modellen = [envDefault, ...GROQ_MODELS_NIEUW.filter(m => m !== envDefault)];
+  const modellen = [envDefault, ...beschikbareModellen.filter(m => m !== envDefault)];
   for (const m of modellen) {
     const optie = document.createElement('option');
     optie.value = m;
@@ -534,7 +528,7 @@ async function laadInstellingen() {
     const data = await res.json();
     groqRpmInputEl.value = data.groq_rpm;
     googleRpmInputEl.value = data.google_rpm;
-    vulGroqModelDropdown(data.groq_model || 'llama3-8b-8192');
+    vulGroqModelDropdown(data.groq_model || 'llama3-8b-8192', data.groq_models_beschikbaar || []);
   } catch (_) {}
 }
 

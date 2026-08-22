@@ -28,6 +28,7 @@ _STUB_SETTINGS = json.dumps({
     "groq_rpm": 30,
     "google_rpm": 15,
     "groq_model": GROQ_MODEL_DEFAULT,
+    "groq_models_beschikbaar": GROQ_MODELS_NIEUW,
 })
 
 

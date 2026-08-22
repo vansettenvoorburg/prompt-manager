@@ -22,8 +22,19 @@ SESSION_ITEM_ROUTE = "**/api/sessions/*"
 SETTINGS_ROUTE = "**/api/settings"
 
 GROQ_MODEL_DEFAULT = "llama3-8b-8192"
+GROQ_MODELS_NIEUW = [
+    "openai/gpt-oss-120b",
+    "openai/gpt-oss-20b",
+    "moonshotai/kimi-k2-instruct",
+    "qwen3-32b",
+]
 
-_STUB_SETTINGS = json.dumps({"groq_rpm": 30, "google_rpm": 15, "groq_model": GROQ_MODEL_DEFAULT})
+_STUB_SETTINGS = json.dumps({
+    "groq_rpm": 30,
+    "google_rpm": 15,
+    "groq_model": GROQ_MODEL_DEFAULT,
+    "groq_models_beschikbaar": GROQ_MODELS_NIEUW,
+})
 _STUB_PROMPT_RESPONSE = json.dumps({
     "runs": [{"run_nummer": 1, "temperature": 0.8, "response": "antwoord", "log_status": "ok"}],
 })

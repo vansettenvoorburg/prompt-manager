@@ -386,11 +386,7 @@ async def _roep_provider_aan(
     return result, model, retries, retry_after_sec, model_bevestigd
 
 
-async def _voer_prompt_uit(
-    body: PromptRequest,
-    bijlage_bestandsnaam: str | None = None,
-    bijlage_tekst: str | None = None,
-):
+def _valideer_prompt_request(body: PromptRequest) -> tuple[str, str]:
     ontbrekend = [v for v in ("rol", "taak", "doel") if not getattr(body, v).strip()]
     if ontbrekend:
         raise HTTPException(
@@ -431,10 +427,18 @@ async def _voer_prompt_uit(
             )
         groq_model_gebruikt = body.model
 
-    rpm = _laad_rpm(provider)
-    delay = (60.0 / rpm) if rpm > 0 else 0.0
+    return provider, groq_model_gebruikt
 
-    prompt = bouw_prompt(body, bijlage_tekst)
+
+async def _voer_hoofdruns_uit(
+    body: PromptRequest,
+    prompt: str,
+    provider: str,
+    groq_model_gebruikt: str,
+    delay: float,
+    bijlage_bestandsnaam: str | None,
+    bijlage_tekst: str | None,
+) -> tuple[list[dict], bool]:
     resultaten = []
     is_eerste_request = True
 
@@ -445,14 +449,14 @@ async def _voer_prompt_uit(
             await asyncio.sleep(delay)
         is_eerste_request = False
 
-        start = datetime.now()
+        start = datetime.now(timezone.utc)
 
         try:
             result, model, retries, retry_after_sec, model_bevestigd = await _roep_provider_aan(
                 provider, prompt, temperature, groq_model_gebruikt
             )
 
-            duur = (datetime.now() - start).total_seconds()
+            duur = (datetime.now(timezone.utc) - start).total_seconds()
             log_pad, log_warning = _schrijf_log(
                 body, prompt, result, start, duur, model, i, temperature,
                 bijlage_bestandsnaam, bijlage_tekst,
@@ -484,9 +488,18 @@ async def _voer_prompt_uit(
         except ConnectionError as exc:
             resultaten.append({"run_nummer": i, "fout": str(exc)})
 
-    if not body.reviewers:
-        return {"runs": resultaten}
+    return resultaten, is_eerste_request
 
+
+async def _voer_reviewer_ronde_uit(
+    body: PromptRequest,
+    resultaten: list[dict],
+    bijlage_tekst: str | None,
+    provider: str,
+    groq_model_gebruikt: str,
+    delay: float,
+    is_eerste_request: bool,
+) -> tuple[list[dict], str]:
     reviewer_stappen = []
     eindoutput = ""
 
@@ -511,13 +524,13 @@ async def _voer_prompt_uit(
                     await asyncio.sleep(delay)
                 is_eerste_request = False
 
-                start = datetime.now()
+                start = datetime.now(timezone.utc)
                 try:
                     result, model, retries, retry_after_sec, _ = await _roep_provider_aan(
                         provider, reviewer_prompt, temperature, groq_model_gebruikt
                     )
 
-                    duur = (datetime.now() - start).total_seconds()
+                    duur = (datetime.now(timezone.utc) - start).total_seconds()
                     log_pad, log_warning = _schrijf_reviewer_log(
                         body, reviewer_nr, reviewer.rol, reviewer.omschrijving, run_nummer, temperature,
                         reviewer_prompt, result, start, duur, model,
@@ -563,6 +576,31 @@ async def _voer_prompt_uit(
 
         eindoutput = vorige_output
 
+    return reviewer_stappen, eindoutput
+
+
+async def _voer_prompt_uit(
+    body: PromptRequest,
+    bijlage_bestandsnaam: str | None = None,
+    bijlage_tekst: str | None = None,
+):
+    provider, groq_model_gebruikt = _valideer_prompt_request(body)
+
+    rpm = _laad_rpm(provider)
+    delay = (60.0 / rpm) if rpm > 0 else 0.0
+
+    prompt = bouw_prompt(body, bijlage_tekst)
+    resultaten, is_eerste_request = await _voer_hoofdruns_uit(
+        body, prompt, provider, groq_model_gebruikt, delay, bijlage_bestandsnaam, bijlage_tekst
+    )
+
+    if not body.reviewers:
+        return {"runs": resultaten}
+
+    reviewer_stappen, eindoutput = await _voer_reviewer_ronde_uit(
+        body, resultaten, bijlage_tekst, provider, groq_model_gebruikt, delay, is_eerste_request
+    )
+
     return {"runs": resultaten, "reviewer_stappen": reviewer_stappen, "eindoutput": eindoutput}
 
 
@@ -576,6 +614,7 @@ async def get_settings():
         "groq_rpm": int(data.get("groq_rpm", _GROQ_RPM_DEFAULT)),
         "google_rpm": int(data.get("google_rpm", _GOOGLE_RPM_DEFAULT)),
         "groq_model": GROQ_MODEL,
+        "groq_models_beschikbaar": GROQ_MODELS_BESCHIKBAAR,
     }
 
 
