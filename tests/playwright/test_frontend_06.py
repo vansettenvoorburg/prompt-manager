@@ -61,33 +61,33 @@ def _stub_runs_response(page: Page, runs: int = 1, temperature: float = 0.8):
 # ---------------------------------------------------------------------------
 
 def test_runs_invoerveld_is_zichtbaar(page: Page):
-    """De UI toont een invoerveld voor 'Aantal runs'."""
+    """Dekt: TD-06-01 — de UI toont een invoerveld voor 'Aantal runs'."""
     expect(page.locator("[data-testid=runs-input]")).to_be_visible()
 
 
 def test_runs_standaardwaarde_is_1(page: Page):
-    """Het invoerveld 'Aantal runs' heeft als standaardwaarde 1."""
+    """Dekt: TD-06-02 — het invoerveld 'Aantal runs' heeft als standaardwaarde 1."""
     waarde = page.locator("[data-testid=runs-input]").input_value()
     assert waarde == "1", f"Standaard runs is niet 1: {waarde!r}"
 
 
 def test_temperature_modus_schakelaar_is_zichtbaar(page: Page):
-    """De UI toont een keuzeschakelaar voor de temperature-modus."""
+    """Dekt: TD-06-03 — de UI toont een keuzeschakelaar voor de temperature-modus."""
     expect(page.locator("[data-testid=temperature-modus]")).to_be_visible()
 
 
 def test_temperature_modus_heeft_optie_alle(page: Page):
-    """De schakelaar heeft een optie voor 'één temperature voor alle runs'."""
+    """Dekt: TD-06-04 — de schakelaar heeft een optie voor 'één temperature voor alle runs'."""
     expect(page.locator("[data-testid=temperature-modus-alle]")).to_be_visible()
 
 
 def test_temperature_modus_heeft_optie_per_run(page: Page):
-    """De schakelaar heeft een optie voor 'één temperature per run'."""
+    """Dekt: TD-06-05 — de schakelaar heeft een optie voor 'één temperature per run'."""
     expect(page.locator("[data-testid=temperature-modus-per-run]")).to_be_visible()
 
 
 def test_temperature_invoerveld_is_zichtbaar(page: Page):
-    """De UI toont een invoerveld voor de temperature."""
+    """Dekt: TD-06-06 — de UI toont een invoerveld voor de temperature."""
     expect(page.locator("[data-testid=temperature-input]")).to_be_visible()
 
 
@@ -96,27 +96,27 @@ def test_temperature_invoerveld_is_zichtbaar(page: Page):
 # ---------------------------------------------------------------------------
 
 def test_ollama_temperature_standaard_is_0_punt_8(page: Page):
-    """Bij provider Ollama is de temperature vooraf ingevuld met 0.8."""
+    """Dekt: TD-06-07 — bij provider Ollama is de temperature vooraf ingevuld met 0.8."""
     waarde = page.locator("[data-testid=temperature-input]").input_value()
     assert waarde == "0.8", f"Standaard temperature voor Ollama is niet 0.8: {waarde!r}"
 
 
 def test_groq_temperature_standaard_is_1(page: Page):
-    """Bij provider Groq is de temperature vooraf ingevuld met 1."""
+    """Dekt: TD-06-08 — bij provider Groq is de temperature vooraf ingevuld met 1."""
     page.locator("[data-testid=provider-select]").select_option("groq")
     waarde = page.locator("[data-testid=temperature-input]").input_value()
     assert waarde in ("1", "1.0"), f"Standaard temperature voor Groq is niet 1: {waarde!r}"
 
 
 def test_wisselen_naar_groq_werkt_temperature_bij(page: Page):
-    """Bij wisselen van Ollama naar Groq wordt de temperature bijgewerkt naar 1."""
+    """Dekt: TD-06-09 — bij wisselen van Ollama naar Groq wordt de temperature bijgewerkt naar 1."""
     page.locator("[data-testid=provider-select]").select_option("groq")
     waarde = page.locator("[data-testid=temperature-input]").input_value()
     assert waarde in ("1", "1.0"), f"Temperature na wisselen naar Groq is niet 1: {waarde!r}"
 
 
 def test_wisselen_naar_ollama_werkt_temperature_bij(page: Page):
-    """Bij wisselen van Groq naar Ollama wordt de temperature bijgewerkt naar 0.8."""
+    """Dekt: TD-06-10 — bij wisselen van Groq naar Ollama wordt de temperature bijgewerkt naar 0.8."""
     page.locator("[data-testid=provider-select]").select_option("groq")
     page.locator("[data-testid=provider-select]").select_option("ollama")
     waarde = page.locator("[data-testid=temperature-input]").input_value()
@@ -124,7 +124,7 @@ def test_wisselen_naar_ollama_werkt_temperature_bij(page: Page):
 
 
 def test_handmatig_gewijzigde_temperature_wordt_niet_overschreven(page: Page):
-    """Als de gebruiker de temperature handmatig heeft aangepast, wordt deze niet overschreven bij een provider-wissel."""
+    """Dekt: TD-06-11 — als de gebruiker de temperature handmatig heeft aangepast, wordt deze niet overschreven bij een provider-wissel."""
     page.locator("[data-testid=temperature-input]").fill("0.5")
     page.locator("[data-testid=provider-select]").select_option("groq")
     waarde = page.locator("[data-testid=temperature-input]").input_value()
@@ -136,7 +136,7 @@ def test_handmatig_gewijzigde_temperature_wordt_niet_overschreven(page: Page):
 # ---------------------------------------------------------------------------
 
 def test_temperature_label_heeft_verplicht_aanduiding(page: Page):
-    """De UI toont bij het temperature-veld een aanduiding dat het verplicht is (bijv. *)."""
+    """Dekt: TD-06-12 — de UI toont bij het temperature-veld een aanduiding dat het verplicht is (bijv. *)."""
     label_tekst = page.locator("[data-testid=temperature-label]").inner_text()
     assert "*" in label_tekst or "Verplicht" in label_tekst, (
         f"Geen verplicht-aanduiding gevonden in het temperature-label: {label_tekst!r}"
@@ -148,7 +148,7 @@ def test_temperature_label_heeft_verplicht_aanduiding(page: Page):
 # ---------------------------------------------------------------------------
 
 def test_runs_wordt_meegestuurd_in_aanvraag(page: Page):
-    """Het veld 'runs' wordt meegestuurd in de API-aanvraag."""
+    """Dekt: TD-06-13 — het veld 'runs' wordt meegestuurd in de API-aanvraag."""
     vastgelegd: dict = {}
 
     def vang_op(route):
@@ -167,7 +167,7 @@ def test_runs_wordt_meegestuurd_in_aanvraag(page: Page):
 
 
 def test_temperature_modus_wordt_meegestuurd_in_aanvraag(page: Page):
-    """Het veld 'temperature_modus' wordt meegestuurd in de API-aanvraag."""
+    """Dekt: TD-06-13 — het veld 'temperature_modus' wordt meegestuurd in de API-aanvraag."""
     vastgelegd: dict = {}
 
     def vang_op(route):
@@ -185,7 +185,7 @@ def test_temperature_modus_wordt_meegestuurd_in_aanvraag(page: Page):
 
 
 def test_temperatures_wordt_meegestuurd_in_aanvraag(page: Page):
-    """Het veld 'temperatures' wordt als array meegestuurd in de API-aanvraag."""
+    """Dekt: TD-06-13 — het veld 'temperatures' wordt als array meegestuurd in de API-aanvraag."""
     vastgelegd: dict = {}
 
     def vang_op(route):
@@ -208,7 +208,7 @@ def test_temperatures_wordt_meegestuurd_in_aanvraag(page: Page):
 # ---------------------------------------------------------------------------
 
 def test_runs_nul_toont_foutmelding_en_verstuurt_niet(page: Page):
-    """Bij runs=0 toont de UI een foutmelding en wordt de aanvraag niet verstuurd."""
+    """Dekt: TD-06-18 — bij runs=0 toont de UI een foutmelding en wordt de aanvraag niet verstuurd."""
     calls = []
     page.route(PROMPT_ROUTE, lambda route: (calls.append(route) or route.abort()))
 
@@ -221,7 +221,7 @@ def test_runs_nul_toont_foutmelding_en_verstuurt_niet(page: Page):
 
 
 def test_temperature_leeg_toont_foutmelding_en_verstuurt_niet(page: Page):
-    """Bij een lege temperature toont de UI een foutmelding en wordt de aanvraag niet verstuurd."""
+    """Dekt: TD-06-19 — bij een lege temperature toont de UI een foutmelding en wordt de aanvraag niet verstuurd."""
     calls = []
     page.route(PROMPT_ROUTE, lambda route: (calls.append(route) or route.abort()))
 
@@ -234,7 +234,7 @@ def test_temperature_leeg_toont_foutmelding_en_verstuurt_niet(page: Page):
 
 
 def test_temperature_buiten_bereik_toont_foutmelding(page: Page):
-    """Bij een temperature buiten 0–2 toont de UI een foutmelding."""
+    """Dekt: TD-06-20 — bij een temperature buiten 0–2 toont de UI een foutmelding."""
     page.locator("[data-testid=temperature-input]").fill("2.5")
     _vul_verplichte_velden(page)
     page.get_by_role("button", name="Verstuur").click()
@@ -243,7 +243,7 @@ def test_temperature_buiten_bereik_toont_foutmelding(page: Page):
 
 
 def test_temperature_foutmelding_noemt_bereik(page: Page):
-    """De foutmelding bij een ongeldige temperature vermeldt het geldige bereik (0 en 2)."""
+    """Dekt: TD-06-20 — de foutmelding bij een ongeldige temperature vermeldt het geldige bereik (0 en 2)."""
     page.locator("[data-testid=temperature-input]").fill("3.0")
     _vul_verplichte_velden(page)
     page.get_by_role("button", name="Verstuur").click()
@@ -255,7 +255,7 @@ def test_temperature_foutmelding_noemt_bereik(page: Page):
 
 
 def test_per_run_mismatch_toont_foutmelding(page: Page):
-    """In modus 'per_run' met verkeerd aantal temperatures toont de UI een foutmelding."""
+    """Dekt: TD-06-21 — in modus 'per_run' met verkeerd aantal temperatures toont de UI een foutmelding."""
     page.locator("[data-testid=runs-input]").fill("3")
     page.locator("[data-testid=temperature-modus-per-run]").click()
     page.locator("[data-testid=temperature-input]").fill("0.3, 0.7")
@@ -266,7 +266,7 @@ def test_per_run_mismatch_toont_foutmelding(page: Page):
 
 
 def test_per_run_mismatch_foutmelding_noemt_verwacht_aantal(page: Page):
-    """De foutmelding bij een per_run-mismatch vermeldt het verwachte aantal temperatures."""
+    """Dekt: TD-06-21 — de foutmelding bij een per_run-mismatch vermeldt het verwachte aantal temperatures."""
     page.locator("[data-testid=runs-input]").fill("3")
     page.locator("[data-testid=temperature-modus-per-run]").click()
     page.locator("[data-testid=temperature-input]").fill("0.3, 0.7")
@@ -282,7 +282,7 @@ def test_per_run_mismatch_foutmelding_noemt_verwacht_aantal(page: Page):
 # ---------------------------------------------------------------------------
 
 def test_ui_toont_alle_run_resultaten_na_uitvoering(page: Page):
-    """Na uitvoering toont de UI alle run-resultaten op volgorde."""
+    """Dekt: TD-06-17 — na uitvoering toont de UI alle run-resultaten op volgorde."""
     run_data = json.dumps({"runs": [
         {"run_nummer": 1, "temperature": 0.7, "response": "Antwoord run 1", "log_status": "ok"},
         {"run_nummer": 2, "temperature": 0.7, "response": "Antwoord run 2", "log_status": "ok"},
@@ -301,7 +301,7 @@ def test_ui_toont_alle_run_resultaten_na_uitvoering(page: Page):
 
 
 def test_ui_toont_foutmelding_voor_mislukte_run(page: Page):
-    """Als een run mislukt, toont de UI een foutmelding voor die specifieke run."""
+    """Dekt: TD-06-23 — als een run mislukt, toont de UI een foutmelding voor die specifieke run."""
     run_data = json.dumps({"runs": [
         {"run_nummer": 1, "fout": "Ollama niet bereikbaar"},
         {"run_nummer": 2, "temperature": 0.7, "response": "Antwoord run 2", "log_status": "ok"},
@@ -321,7 +321,7 @@ def test_ui_toont_foutmelding_voor_mislukte_run(page: Page):
 
 
 def test_ui_toont_geslaagde_run_ondanks_mislukte_run(page: Page):
-    """Na een mislukte run toont de UI het resultaat van de geslaagde run wél."""
+    """Dekt: TD-06-23 — na een mislukte run toont de UI het resultaat van de geslaagde run wél."""
     run_data = json.dumps({"runs": [
         {"run_nummer": 1, "fout": "Ollama niet bereikbaar"},
         {"run_nummer": 2, "temperature": 0.7, "response": "Antwoord run 2", "log_status": "ok"},
@@ -343,7 +343,7 @@ def test_ui_toont_geslaagde_run_ondanks_mislukte_run(page: Page):
 # ---------------------------------------------------------------------------
 
 def test_sessie_opslaan_stuurt_runs_mee(page: Page):
-    """Bij het opslaan van een sessie wordt 'runs' meegestuurd in het verzoek."""
+    """Dekt: TD-06-14 — bij het opslaan van een sessie wordt 'runs' meegestuurd in het verzoek."""
     vastgelegd: dict = {}
 
     def handle(route):
@@ -358,13 +358,14 @@ def test_sessie_opslaan_stuurt_runs_mee(page: Page):
     page.locator("[data-testid=runs-input]").fill("2")
     page.locator("[name=session-name]").fill("test-sessie")
     page.get_by_role("button", name="Opslaan").click()
+    page.wait_for_selector("[data-testid=save-confirmation]")
 
     assert "runs" in vastgelegd, f"Veld 'runs' ontbreekt bij opslaan: {vastgelegd}"
     assert vastgelegd["runs"] == 2
 
 
 def test_sessie_opslaan_stuurt_temperature_modus_mee(page: Page):
-    """Bij het opslaan van een sessie wordt 'temperature_modus' meegestuurd."""
+    """Dekt: TD-06-14 — bij het opslaan van een sessie wordt 'temperature_modus' meegestuurd."""
     vastgelegd: dict = {}
 
     def handle(route):
@@ -378,12 +379,13 @@ def test_sessie_opslaan_stuurt_temperature_modus_mee(page: Page):
     _vul_verplichte_velden(page)
     page.locator("[name=session-name]").fill("test-sessie")
     page.get_by_role("button", name="Opslaan").click()
+    page.wait_for_selector("[data-testid=save-confirmation]")
 
     assert "temperature_modus" in vastgelegd, f"Veld 'temperature_modus' ontbreekt: {vastgelegd}"
 
 
 def test_sessie_opslaan_stuurt_temperatures_mee(page: Page):
-    """Bij het opslaan van een sessie wordt 'temperatures' meegestuurd."""
+    """Dekt: TD-06-14 — bij het opslaan van een sessie wordt 'temperatures' meegestuurd."""
     vastgelegd: dict = {}
 
     def handle(route):
@@ -397,13 +399,14 @@ def test_sessie_opslaan_stuurt_temperatures_mee(page: Page):
     _vul_verplichte_velden(page)
     page.locator("[name=session-name]").fill("test-sessie")
     page.get_by_role("button", name="Opslaan").click()
+    page.wait_for_selector("[data-testid=save-confirmation]")
 
     assert "temperatures" in vastgelegd, f"Veld 'temperatures' ontbreekt: {vastgelegd}"
     assert isinstance(vastgelegd["temperatures"], list)
 
 
 def test_sessie_laden_vult_runs_in(page: Page):
-    """Bij het laden van een sessie wordt 'runs' ingevuld in het formulier."""
+    """Dekt: TD-06-15 — bij het laden van een sessie wordt 'runs' ingevuld in het formulier."""
     sessie_data = json.dumps({
         "name": "test-runs",
         "provider": "ollama",
@@ -428,7 +431,7 @@ def test_sessie_laden_vult_runs_in(page: Page):
 
 
 def test_sessie_laden_vult_temperature_modus_in(page: Page):
-    """Bij het laden van een sessie wordt de temperature_modus correct geselecteerd."""
+    """Dekt: TD-06-15 — bij het laden van een sessie wordt de temperature_modus correct geselecteerd."""
     sessie_data = json.dumps({
         "name": "test-runs",
         "provider": "ollama",
@@ -452,7 +455,7 @@ def test_sessie_laden_vult_temperature_modus_in(page: Page):
 
 
 def test_sessie_laden_vult_temperatures_in(page: Page):
-    """Bij het laden van een sessie worden de temperatures ingevuld in het invoerveld."""
+    """Dekt: TD-06-15 — bij het laden van een sessie worden de temperatures ingevuld in het invoerveld."""
     sessie_data = json.dumps({
         "name": "test-runs",
         "provider": "ollama",
@@ -477,7 +480,7 @@ def test_sessie_laden_vult_temperatures_in(page: Page):
 
 
 def test_sessie_laden_zonder_runs_velden_geeft_geen_fout(page: Page):
-    """Bestaande sessies zonder runs/temperature-velden kunnen worden geladen zonder foutmelding."""
+    """Dekt: TD-06-22 — bestaande sessies zonder runs/temperature-velden kunnen worden geladen zonder foutmelding."""
     sessie_data = json.dumps({
         "name": "oud-sessie",
         "provider": "ollama",

@@ -84,18 +84,18 @@ def _kies_groq(page: Page):
 # ---------------------------------------------------------------------------
 
 def test_model_dropdown_niet_zichtbaar_bij_ollama(page: Page):
-    """De modeldropdown is niet zichtbaar bij de standaardprovider Ollama."""
+    """Dekt: TD-11-01 — de modeldropdown is niet zichtbaar bij de standaardprovider Ollama."""
     expect(page.locator("[data-testid=groq-model-select]")).not_to_be_visible()
 
 
 def test_model_dropdown_zichtbaar_bij_groq(page: Page):
-    """De modeldropdown is zichtbaar wanneer provider Groq is geselecteerd."""
+    """Dekt: TD-11-01 — de modeldropdown is zichtbaar wanneer provider Groq is geselecteerd."""
     _kies_groq(page)
     expect(page.locator("[data-testid=groq-model-select]")).to_be_visible()
 
 
 def test_model_dropdown_verdwijnt_bij_terug_naar_ollama(page: Page):
-    """De modeldropdown verdwijnt weer als de gebruiker teruggaat naar Ollama."""
+    """Dekt: TD-11-01 — de modeldropdown verdwijnt weer als de gebruiker teruggaat naar Ollama."""
     _kies_groq(page)
     page.locator("[data-testid=provider-select]").select_option("ollama")
     expect(page.locator("[data-testid=groq-model-select]")).not_to_be_visible()
@@ -107,7 +107,7 @@ def test_model_dropdown_verdwijnt_bij_terug_naar_ollama(page: Page):
 
 @pytest.mark.parametrize("model", GROQ_MODELS_NIEUW)
 def test_dropdown_bevat_nieuw_model(page: Page, model):
-    """De dropdown bevat elk van de vier nieuwe modellen als optie."""
+    """Dekt: TD-11-02 — de dropdown bevat elk van de vier nieuwe modellen als optie."""
     _kies_groq(page)
     waarden = page.locator("[data-testid=groq-model-select] option").evaluate_all(
         "opts => opts.map(o => o.value)"
@@ -116,7 +116,7 @@ def test_dropdown_bevat_nieuw_model(page: Page, model):
 
 
 def test_dropdown_bevat_env_default_model(page: Page):
-    """De dropdown bevat het model dat is ingesteld via GROQ_MODEL."""
+    """Dekt: TD-11-03 — de dropdown bevat het model dat is ingesteld via GROQ_MODEL."""
     _kies_groq(page)
     waarden = page.locator("[data-testid=groq-model-select] option").evaluate_all(
         "opts => opts.map(o => o.value)"
@@ -125,7 +125,7 @@ def test_dropdown_bevat_env_default_model(page: Page):
 
 
 def test_dropdown_geen_duplicaat_als_env_model_matcht_nieuw_model(page: Page):
-    """Als GROQ_MODEL overeenkomt met een van de vier nieuwe modellen, verschijnt deze niet dubbel."""
+    """Dekt: TD-11-04 — als GROQ_MODEL overeenkomt met een van de vier nieuwe modellen, verschijnt deze niet dubbel."""
     page.unroute(SETTINGS_ROUTE)
     matchende_settings = json.dumps({"groq_rpm": 30, "google_rpm": 15, "groq_model": "qwen3-32b"})
     page.route(SETTINGS_ROUTE, lambda route: route.fulfill(
@@ -148,7 +148,7 @@ def test_dropdown_geen_duplicaat_als_env_model_matcht_nieuw_model(page: Page):
 # ---------------------------------------------------------------------------
 
 def test_dropdown_default_is_groq_model_env_waarde(page: Page):
-    """Bij het laden van de pagina staat de dropdown standaard op de GROQ_MODEL-waarde."""
+    """Dekt: TD-11-05 — bij het laden van de pagina staat de dropdown standaard op de GROQ_MODEL-waarde."""
     _kies_groq(page)
     expect(page.locator("[data-testid=groq-model-select]")).to_have_value(GROQ_MODEL_DEFAULT)
 
@@ -158,7 +158,7 @@ def test_dropdown_default_is_groq_model_env_waarde(page: Page):
 # ---------------------------------------------------------------------------
 
 def test_geselecteerd_model_wordt_meegestuurd_bij_aanvraag(page: Page):
-    """Het geselecteerde model wordt meegestuurd bij een promptaanvraag naar de backend."""
+    """Dekt: TD-11-06 — het geselecteerde model wordt meegestuurd bij een promptaanvraag naar de backend."""
     vastgelegd: dict = {}
 
     def vang_op(route):
@@ -181,7 +181,7 @@ def test_geselecteerd_model_wordt_meegestuurd_bij_aanvraag(page: Page):
 # ---------------------------------------------------------------------------
 
 def test_geselecteerd_model_wordt_opgeslagen_in_sessie(page: Page):
-    """Het geselecteerde Groq-model wordt meegestuurd bij het opslaan van een sessie."""
+    """Dekt: TD-11-07 — het geselecteerde Groq-model wordt meegestuurd bij het opslaan van een sessie."""
     vastgelegd: dict = {}
 
     def vang_op(route):
@@ -197,6 +197,7 @@ def test_geselecteerd_model_wordt_opgeslagen_in_sessie(page: Page):
     page.locator("[data-testid=groq-model-select]").select_option("moonshotai/kimi-k2-instruct")
     page.locator("[name=session-name]").fill("model-sessie")
     page.get_by_role("button", name="Opslaan").click()
+    page.wait_for_selector("[data-testid=save-confirmation]")
 
     assert vastgelegd.get("groq_model") == "moonshotai/kimi-k2-instruct", (
         f"Verwacht groq_model='moonshotai/kimi-k2-instruct' bij opslaan, kreeg: {vastgelegd}"
@@ -204,7 +205,7 @@ def test_geselecteerd_model_wordt_opgeslagen_in_sessie(page: Page):
 
 
 def test_sessie_laden_herstelt_groq_model(page: Page):
-    """Bij het laden van een sessie met provider Groq wordt het opgeslagen model geselecteerd."""
+    """Dekt: TD-11-08 — bij het laden van een sessie met provider Groq wordt het opgeslagen model geselecteerd."""
     sessie_data = {
         "name": "model-sessie",
         "rol": "senior developer",
@@ -231,7 +232,7 @@ def test_sessie_laden_herstelt_groq_model(page: Page):
 
 
 def test_sessie_zonder_groq_model_valt_terug_op_default(page: Page):
-    """Een sessie zonder 'groq_model'-veld (opgeslagen vóór deze wijziging) laadt met GROQ_MODEL als default."""
+    """Dekt: TD-11-09 — een sessie zonder 'groq_model'-veld (opgeslagen vóór deze wijziging) laadt met GROQ_MODEL als default."""
     oude_sessie_data = {
         "name": "oude-sessie",
         "rol": "senior developer",

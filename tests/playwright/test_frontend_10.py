@@ -86,7 +86,7 @@ def _mock_clipboard_mislukt(page: Page):
 # ---------------------------------------------------------------------------
 
 def test_run_result_heeft_kopieerknop(page: Page):
-    """Elk run-resultaatblok heeft een kopieerknop."""
+    """Dekt: TD-10-01 — elk run-resultaatblok heeft een kopieerknop."""
     _stub_prompt_response(page)
     _vul_verplichte_velden(page)
     page.get_by_role("button", name="Verstuur").click()
@@ -97,7 +97,7 @@ def test_run_result_heeft_kopieerknop(page: Page):
 
 
 def test_reviewer_stap_heeft_kopieerknop(page: Page):
-    """Elk reviewer-stap heeft een kopieerknop."""
+    """Dekt: TD-10-02 — elk reviewer-stap heeft een kopieerknop."""
     _stub_prompt_response(page)
     _vul_verplichte_velden(page)
     page.locator("[data-testid=reviewer-toevoegen]").click()
@@ -110,7 +110,7 @@ def test_reviewer_stap_heeft_kopieerknop(page: Page):
 
 
 def test_eindoutput_heeft_kopieerknop(page: Page):
-    """De eindoutput heeft een kopieerknop."""
+    """Dekt: TD-10-03 — de eindoutput heeft een kopieerknop."""
     _stub_prompt_response(page)
     _vul_verplichte_velden(page)
     page.locator("[data-testid=reviewer-toevoegen]").click()
@@ -127,7 +127,7 @@ def test_eindoutput_heeft_kopieerknop(page: Page):
 # ---------------------------------------------------------------------------
 
 def test_kopieerknop_tekst_verandert_naar_gekopieerd(page: Page):
-    """Na klikken op de kopieerknop verandert de tekst tijdelijk naar 'Gekopieerd!'."""
+    """Dekt: TD-10-04 — na klikken op de kopieerknop verandert de tekst tijdelijk naar 'Gekopieerd!'."""
     _stub_prompt_response(page)
     _vul_verplichte_velden(page)
     page.get_by_role("button", name="Verstuur").click()
@@ -140,7 +140,7 @@ def test_kopieerknop_tekst_verandert_naar_gekopieerd(page: Page):
 
 
 def test_kopieerknop_tekst_keert_terug_na_2_seconden(page: Page):
-    """Na 2 seconden keert de knoptekst terug naar de originele tekst."""
+    """Dekt: TD-10-04 — na 2 seconden keert de knoptekst terug naar de originele tekst."""
     _stub_prompt_response(page)
     _vul_verplichte_velden(page)
     page.get_by_role("button", name="Verstuur").click()
@@ -155,7 +155,7 @@ def test_kopieerknop_tekst_keert_terug_na_2_seconden(page: Page):
 
 
 def test_kopieerknop_toont_mislukt_bij_geen_klembord_toegang(page: Page):
-    """Als het klembord niet beschikbaar is, toont de knop kort 'Mislukt'."""
+    """Dekt: TD-10-05 — als het klembord niet beschikbaar is, toont de knop kort 'Mislukt'."""
     _stub_prompt_response(page)
     _vul_verplichte_velden(page)
     page.get_by_role("button", name="Verstuur").click()
@@ -172,19 +172,19 @@ def test_kopieerknop_toont_mislukt_bij_geen_klembord_toegang(page: Page):
 # ---------------------------------------------------------------------------
 
 def test_taak_is_textarea(page: Page):
-    """Het `taak`-veld is een textarea-element."""
+    """Dekt: TD-10-06 — het `taak`-veld is een textarea-element."""
     tag = page.locator("[name=taak]").evaluate("el => el.tagName.toLowerCase()")
     assert tag == "textarea", f"Verwacht textarea voor 'taak', maar het element is: {tag!r}"
 
 
 def test_doel_is_textarea(page: Page):
-    """Het `doel`-veld is een textarea-element."""
+    """Dekt: TD-10-07 — het `doel`-veld is een textarea-element."""
     tag = page.locator("[name=doel]").evaluate("el => el.tagName.toLowerCase()")
     assert tag == "textarea", f"Verwacht textarea voor 'doel', maar het element is: {tag!r}"
 
 
 def test_formaat_is_textarea(page: Page):
-    """Het `formaat`-veld is een textarea-element."""
+    """Dekt: TD-10-08 — het `formaat`-veld is een textarea-element."""
     tag = page.locator("[name=formaat]").evaluate("el => el.tagName.toLowerCase()")
     assert tag == "textarea", f"Verwacht textarea voor 'formaat', maar het element is: {tag!r}"
 
@@ -194,25 +194,25 @@ def test_formaat_is_textarea(page: Page):
 # ---------------------------------------------------------------------------
 
 def test_taak_heeft_2_rijen(page: Page):
-    """Het `taak`-veld heeft standaard 2 rijen zichtbare ruimte."""
+    """Dekt: TD-10-06 — het `taak`-veld heeft standaard 2 rijen zichtbare ruimte."""
     rijen = page.locator("[name=taak]").get_attribute("rows")
     assert rijen == "2", f"Verwacht rows='2' voor 'taak', maar kreeg {rijen!r}"
 
 
 def test_doel_heeft_2_rijen(page: Page):
-    """Het `doel`-veld heeft standaard 2 rijen zichtbare ruimte."""
+    """Dekt: TD-10-07 — het `doel`-veld heeft standaard 2 rijen zichtbare ruimte."""
     rijen = page.locator("[name=doel]").get_attribute("rows")
     assert rijen == "2", f"Verwacht rows='2' voor 'doel', maar kreeg {rijen!r}"
 
 
 def test_formaat_heeft_3_rijen(page: Page):
-    """Het `formaat`-veld heeft standaard 3 rijen zichtbare ruimte."""
+    """Dekt: TD-10-08 — het `formaat`-veld heeft standaard 3 rijen zichtbare ruimte."""
     rijen = page.locator("[name=formaat]").get_attribute("rows")
     assert rijen == "3", f"Verwacht rows='3' voor 'formaat', maar kreeg {rijen!r}"
 
 
 def test_eisen_blijft_textarea_met_3_rijen(page: Page):
-    """Het `eisen`-veld blijft een textarea met 3 rijen."""
+    """Dekt: TD-10-09 — het `eisen`-veld blijft een textarea met 3 rijen."""
     eisen = page.locator("[name=eisen]")
     tag = eisen.evaluate("el => el.tagName.toLowerCase()")
     assert tag == "textarea", f"Verwacht textarea voor 'eisen', maar het element is: {tag!r}"
@@ -221,7 +221,7 @@ def test_eisen_blijft_textarea_met_3_rijen(page: Page):
 
 
 def test_voorbeelden_blijft_textarea_met_3_rijen(page: Page):
-    """Het `voorbeelden`-veld blijft een textarea met 3 rijen."""
+    """Dekt: TD-10-09 — het `voorbeelden`-veld blijft een textarea met 3 rijen."""
     voorbeelden = page.locator("[name=voorbeelden]")
     tag = voorbeelden.evaluate("el => el.tagName.toLowerCase()")
     assert tag == "textarea", f"Verwacht textarea voor 'voorbeelden', maar het element is: {tag!r}"
@@ -234,21 +234,21 @@ def test_voorbeelden_blijft_textarea_met_3_rijen(page: Page):
 # ---------------------------------------------------------------------------
 
 def test_taak_accepteert_newlines(page: Page):
-    """Het `taak`-veld accepteert newlines (Enter-toets)."""
+    """Dekt: TD-10-06 — het `taak`-veld accepteert newlines (Enter-toets)."""
     page.locator("[name=taak]").fill("regel 1\nregel 2")
     waarde = page.locator("[name=taak]").input_value()
     assert "\n" in waarde, f"Newline ontbreekt in 'taak': {waarde!r}"
 
 
 def test_doel_accepteert_newlines(page: Page):
-    """Het `doel`-veld accepteert newlines (Enter-toets)."""
+    """Dekt: TD-10-07 — het `doel`-veld accepteert newlines (Enter-toets)."""
     page.locator("[name=doel]").fill("doel A\ndoel B")
     waarde = page.locator("[name=doel]").input_value()
     assert "\n" in waarde, f"Newline ontbreekt in 'doel': {waarde!r}"
 
 
 def test_formaat_accepteert_newlines(page: Page):
-    """Het `formaat`-veld accepteert newlines (Enter-toets)."""
+    """Dekt: TD-10-08 — het `formaat`-veld accepteert newlines (Enter-toets)."""
     page.locator("[name=formaat]").fill("JSON\nmarkdown")
     waarde = page.locator("[name=formaat]").input_value()
     assert "\n" in waarde, f"Newline ontbreekt in 'formaat': {waarde!r}"
@@ -259,7 +259,7 @@ def test_formaat_accepteert_newlines(page: Page):
 # ---------------------------------------------------------------------------
 
 def test_validatie_taak_werkt_na_omzetting_naar_textarea(page: Page):
-    """Lege `taak` toont een validatiefout, ook nadat het een textarea is geworden."""
+    """Dekt: TD-10-10 — lege `taak` toont een validatiefout, ook nadat het een textarea is geworden."""
     page.locator("[name=rol]").fill("Python developer")
     page.locator("[name=doel]").fill("data te verwerken")
     page.get_by_role("button", name="Verstuur").click()
@@ -268,7 +268,7 @@ def test_validatie_taak_werkt_na_omzetting_naar_textarea(page: Page):
 
 
 def test_validatie_doel_werkt_na_omzetting_naar_textarea(page: Page):
-    """Leeg `doel` toont een validatiefout, ook nadat het een textarea is geworden."""
+    """Dekt: TD-10-10 — leeg `doel` toont een validatiefout, ook nadat het een textarea is geworden."""
     page.locator("[name=rol]").fill("Python developer")
     page.locator("[name=taak]").fill("een API bouwen")
     page.get_by_role("button", name="Verstuur").click()
@@ -277,7 +277,7 @@ def test_validatie_doel_werkt_na_omzetting_naar_textarea(page: Page):
 
 
 def test_validatie_rol_werkt_ongewijzigd(page: Page):
-    """Lege `rol` toont een validatiefout."""
+    """Dekt: TD-10-10 — lege `rol` toont een validatiefout."""
     page.locator("[name=taak]").fill("een API bouwen")
     page.locator("[name=doel]").fill("data te verwerken")
     page.get_by_role("button", name="Verstuur").click()

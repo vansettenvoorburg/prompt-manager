@@ -3,16 +3,7 @@ Frontend-tests voor story 03: sessie opslaan en laden.
 
 Vereist: geen — de `server`-fixture (conftest.py) start de app automatisch op de testpoort.
 
-AC gedekt:
-- Invoerveld sessienaam en opslaan-knop zijn zichtbaar
-- Na opslaan verschijnt bevestiging met de sessienaam
-- Lege sessienaam toont validatiemelding; geen API-call
-- Bestaande naam toont bevestigingsdialoog; annuleren doet niets
-- Sessies zijn zichtbaar als lijst
-- Sessie selecteren herstelt de formuliervelden
-- Lege sessieslijst toont lege-staat melding
-- Opslaan mislukt (500) toont foutmelding
-- Laden mislukt (500) toont foutmelding
+Zie specs/testdekking.md voor de volledige TD-ID-toewijzing.
 """
 import json
 import pytest
@@ -48,12 +39,12 @@ def _vul_formulier(page: Page, naam: str = "mijn-sessie"):
 # ---------------------------------------------------------------------------
 
 def test_sessienaam_invoerveld_is_zichtbaar(page: Page):
-    """Het invoerveld voor de sessienaam is zichtbaar."""
+    """Dekt: TD-03-01 — het invoerveld voor de sessienaam is zichtbaar."""
     expect(page.locator("[name=session-name]")).to_be_visible()
 
 
 def test_opslaan_knop_is_zichtbaar(page: Page):
-    """De opslaan-knop is zichtbaar."""
+    """Dekt: TD-03-02 — de opslaan-knop is zichtbaar."""
     expect(page.get_by_role("button", name="Opslaan")).to_be_visible()
 
 
@@ -62,7 +53,7 @@ def test_opslaan_knop_is_zichtbaar(page: Page):
 # ---------------------------------------------------------------------------
 
 def test_opslaan_toont_bevestiging(page: Page):
-    """Na opslaan verschijnt een bevestiging met de naam van de sessie."""
+    """Dekt: TD-03-03 — na opslaan verschijnt een bevestiging met de naam van de sessie."""
     page.route(SESSIONS_ROUTE, lambda route: route.fulfill(
         status=200, content_type="application/json", body='{"status": "ok"}',
     ))
@@ -79,7 +70,7 @@ def test_opslaan_toont_bevestiging(page: Page):
 # ---------------------------------------------------------------------------
 
 def test_lege_sessienaam_toont_validatiemelding(page: Page):
-    """Opslaan met lege sessienaam toont een validatiemelding; er wordt geen API-call gedaan."""
+    """Dekt: TD-03-04 — opslaan met lege sessienaam toont een validatiemelding; er wordt geen API-call gedaan."""
     calls = []
     page.route(SESSIONS_ROUTE, lambda route: (
         calls.append(route) or route.abort()
@@ -101,7 +92,7 @@ def test_lege_sessienaam_toont_validatiemelding(page: Page):
 # ---------------------------------------------------------------------------
 
 def test_bestaande_naam_toont_bevestigingsdialoog(page: Page):
-    """Als de sessienaam al bestaat (409), verschijnt een bevestigingsdialoog."""
+    """Dekt: TD-03-05 — als de sessienaam al bestaat (409), verschijnt een bevestigingsdialoog."""
     page.route(SESSIONS_ROUTE, lambda route: route.fulfill(
         status=409, content_type="application/json",
         body='{"detail": "Sessie bestaat al"}',
@@ -116,7 +107,7 @@ def test_bestaande_naam_toont_bevestigingsdialoog(page: Page):
 
 
 def test_annuleren_bij_overschrijven_doet_niets(page: Page):
-    """Annuleren in de bevestigingsdialoog doet niets; de sessie wordt niet overschreven."""
+    """Dekt: TD-03-06 — annuleren in de bevestigingsdialoog doet niets; de sessie wordt niet overschreven."""
     post_calls = []
 
     def handle_route(route):
@@ -147,17 +138,17 @@ def test_annuleren_bij_overschrijven_doet_niets(page: Page):
 # ---------------------------------------------------------------------------
 
 def test_sessieslijst_is_zichtbaar(page: Page):
-    """De sessieslijst is zichtbaar op de pagina."""
+    """Dekt: TD-03-07 — de sessieslijst is zichtbaar op de pagina."""
     expect(page.locator("[data-testid=sessions-list]")).to_be_visible()
 
 
 def test_lege_sessieslijst_toont_melding(page: Page):
-    """Als er geen sessies zijn, is er een lege-staat melding zichtbaar."""
+    """Dekt: TD-03-09 — als er geen sessies zijn, is er een lege-staat melding zichtbaar."""
     expect(page.locator("[data-testid=sessions-empty]")).to_be_visible()
 
 
 def test_sessie_in_lijst_is_zichtbaar_na_ophalen(page: Page):
-    """Opgeslagen sessies zijn zichtbaar als klikbare items in de lijst."""
+    """Dekt: TD-03-07 — opgeslagen sessies zijn zichtbaar als klikbare items in de lijst."""
     page.unroute(SESSIONS_ROUTE)
     page.route(SESSIONS_ROUTE, lambda route: route.fulfill(
         status=200, content_type="application/json",
@@ -169,7 +160,7 @@ def test_sessie_in_lijst_is_zichtbaar_na_ophalen(page: Page):
 
 
 def test_sessie_selecteren_herstelt_formulier(page: Page):
-    """Een sessie aanklikken herstelt de acht velden in het formulier."""
+    """Dekt: TD-03-08 — een sessie aanklikken herstelt de acht velden in het formulier."""
     sessie_data = {
         "name": "mijn-sessie",
         "rol": "senior developer",
@@ -208,7 +199,7 @@ def test_sessie_selecteren_herstelt_formulier(page: Page):
 # ---------------------------------------------------------------------------
 
 def test_opslaan_mislukt_toont_foutmelding(page: Page):
-    """Als opslaan mislukt (500), verschijnt een foutmelding."""
+    """Dekt: TD-03-10 — als opslaan mislukt (500), verschijnt een foutmelding."""
     page.route(SESSIONS_ROUTE, lambda route: route.fulfill(
         status=500, content_type="application/json",
         body='{"detail": "Schrijffout"}',
@@ -223,7 +214,7 @@ def test_opslaan_mislukt_toont_foutmelding(page: Page):
 
 
 def test_laden_mislukt_toont_foutmelding(page: Page):
-    """Als laden mislukt (500), verschijnt een foutmelding."""
+    """Dekt: TD-03-11 — als laden mislukt (500), verschijnt een foutmelding."""
     page.unroute(SESSIONS_ROUTE)
     page.route("**/api/sessions", lambda route: route.fulfill(
         status=200, content_type="application/json",

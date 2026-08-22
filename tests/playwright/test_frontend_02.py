@@ -10,6 +10,8 @@ AC gedekt:
 - Geen API-call zolang een verplicht veld leeg is
 - Antwoord verschijnt na correct invullen van de verplichte velden
 - Achterwaartse compat: laadstatus en Ollama-503 blijven werken
+
+Zie specs/testdekking.md voor de volledige TD-ID-toewijzing.
 """
 import time
 import threading
@@ -33,21 +35,21 @@ def go_to_app(page: Page):
 # ---------------------------------------------------------------------------
 
 def test_alle_acht_velden_zijn_zichtbaar(page: Page):
-    """Elk van de acht velden heeft een zichtbaar invoerveld."""
+    """Dekt: TD-02-01 — elk van de acht velden heeft een zichtbaar invoerveld."""
     for veld in ALLE_VELDEN:
         locator = page.locator(f"[name={veld}]")
         expect(locator).to_be_visible()
 
 
 def test_elk_veld_heeft_een_label(page: Page):
-    """Elk veld is gekoppeld aan een zichtbaar label."""
+    """Dekt: TD-02-02 — elk veld is gekoppeld aan een zichtbaar label."""
     for veld in ALLE_VELDEN:
         label = page.locator(f"label[for={veld}]")
         expect(label).to_be_visible()
 
 
 def test_elk_veld_heeft_een_placeholder(page: Page):
-    """Elk veld heeft een niet-lege placeholder als invulhulp."""
+    """Dekt: TD-02-03 — elk veld heeft een niet-lege placeholder als invulhulp."""
     for veld in ALLE_VELDEN:
         locator = page.locator(f"[name={veld}]")
         placeholder = locator.get_attribute("placeholder")
@@ -55,7 +57,7 @@ def test_elk_veld_heeft_een_placeholder(page: Page):
 
 
 def test_losse_textarea_is_verdwenen(page: Page):
-    """De enkelvoudige textarea uit story 01 is niet meer aanwezig."""
+    """Dekt: TD-02-04 — de enkelvoudige textarea uit story 01 is niet meer aanwezig."""
     expect(page.locator("textarea#prompt")).not_to_be_visible()
 
 
@@ -71,7 +73,7 @@ def _vul_verplichte_velden(page: Page, uitzondering: str | None = None):
 
 
 def test_leeg_rol_toont_validatiemelding(page: Page):
-    """Versturen met leeg veld rol toont een validatiemelding voor rol."""
+    """Dekt: TD-02-08 — versturen met leeg veld rol toont een validatiemelding voor rol."""
     calls = []
     page.route(OLLAMA_ROUTE, lambda route: calls.append(route) or route.abort())
 
@@ -83,7 +85,7 @@ def test_leeg_rol_toont_validatiemelding(page: Page):
 
 
 def test_lege_taak_toont_validatiemelding(page: Page):
-    """Versturen met leeg veld taak toont een validatiemelding voor taak."""
+    """Dekt: TD-02-08 — versturen met leeg veld taak toont een validatiemelding voor taak."""
     calls = []
     page.route(OLLAMA_ROUTE, lambda route: calls.append(route) or route.abort())
 
@@ -95,7 +97,7 @@ def test_lege_taak_toont_validatiemelding(page: Page):
 
 
 def test_leeg_doel_toont_validatiemelding(page: Page):
-    """Versturen met leeg veld doel toont een validatiemelding voor doel."""
+    """Dekt: TD-02-08 — versturen met leeg veld doel toont een validatiemelding voor doel."""
     calls = []
     page.route(OLLAMA_ROUTE, lambda route: calls.append(route) or route.abort())
 
@@ -107,7 +109,7 @@ def test_leeg_doel_toont_validatiemelding(page: Page):
 
 
 def test_meerdere_lege_verplichte_velden_tonen_elk_een_melding(page: Page):
-    """Als alle drie verplichte velden leeg zijn, verschijnt voor elk een eigen melding."""
+    """Dekt: TD-02-08 — als alle drie verplichte velden leeg zijn, verschijnt voor elk een eigen melding."""
     calls = []
     page.route(OLLAMA_ROUTE, lambda route: calls.append(route) or route.abort())
 
@@ -123,7 +125,7 @@ def test_meerdere_lege_verplichte_velden_tonen_elk_een_melding(page: Page):
 # ---------------------------------------------------------------------------
 
 def test_antwoord_verschijnt_na_correct_invullen(page: Page):
-    """Antwoord van Ollama verschijnt nadat alle verplichte velden zijn ingevuld."""
+    """Dekt: TD-02-07 — antwoord van Ollama verschijnt nadat alle verplichte velden zijn ingevuld."""
     page.route(
         OLLAMA_ROUTE,
         lambda route: route.fulfill(
@@ -140,7 +142,7 @@ def test_antwoord_verschijnt_na_correct_invullen(page: Page):
 
 
 def test_optionele_velden_worden_meegestuurd_in_api_call(page: Page):
-    """Ingevulde optionele velden zijn aanwezig in het verstuurde JSON-body."""
+    """Dekt: TD-02-11 — ingevulde optionele velden zijn aanwezig in het verstuurde JSON-body."""
     captured_body = {}
 
     def inspect_route(route):
@@ -165,7 +167,7 @@ def test_optionele_velden_worden_meegestuurd_in_api_call(page: Page):
 # ---------------------------------------------------------------------------
 
 def test_laadstatus_zichtbaar_tijdens_wachten(page: Page):
-    """Achterwaartse compat story 01: laadstatus verschijnt direct na versturen."""
+    """Dekt: TD-02-09 — achterwaartse compat story 01: laadstatus verschijnt direct na versturen."""
 
     def trage_response(route):
         def fulfill():
@@ -188,7 +190,7 @@ def test_laadstatus_zichtbaar_tijdens_wachten(page: Page):
 
 
 def test_ollama_fout_toont_foutmelding(page: Page):
-    """Achterwaartse compat story 01: Ollama-503 toont een foutmelding."""
+    """Dekt: TD-02-10 — achterwaartse compat story 01: Ollama-503 toont een foutmelding."""
     page.route(
         OLLAMA_ROUTE,
         lambda route: route.fulfill(

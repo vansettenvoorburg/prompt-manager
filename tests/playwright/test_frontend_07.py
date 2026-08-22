@@ -51,12 +51,12 @@ def _stub_prompt_response(page: Page):
 # ---------------------------------------------------------------------------
 
 def test_bijlage_knop_is_zichtbaar(page: Page):
-    """De UI toont een bestandskiezer-knop voor het selecteren van een bijlage."""
+    """Dekt: TD-07-01 — de UI toont een bestandskiezer-knop voor het selecteren van een bijlage."""
     expect(page.locator("[data-testid=bijlage-input]")).to_be_attached()
 
 
 def test_bijlage_label_toont_geen_bijlage_als_standaard(page: Page):
-    """Zonder geselecteerde bijlage toont de UI 'Geen bijlage'."""
+    """Dekt: TD-07-02 — zonder geselecteerde bijlage toont de UI 'Geen bijlage'."""
     tekst = page.locator("[data-testid=bijlage-status]").inner_text()
     assert "Geen bijlage" in tekst, f"Standaard bijlagestatus klopt niet: {tekst!r}"
 
@@ -66,7 +66,7 @@ def test_bijlage_label_toont_geen_bijlage_als_standaard(page: Page):
 # ---------------------------------------------------------------------------
 
 def test_geselecteerd_bestand_toont_bestandsnaam(page: Page, tmp_path):
-    """Na het selecteren van een bestand toont de UI de bestandsnaam."""
+    """Dekt: TD-07-02 — na het selecteren van een bestand toont de UI de bestandsnaam."""
     testbestand = tmp_path / "mijn_notities.txt"
     testbestand.write_text("inhoud van notities", encoding="utf-8")
 
@@ -77,7 +77,7 @@ def test_geselecteerd_bestand_toont_bestandsnaam(page: Page, tmp_path):
 
 
 def test_verwijderknop_is_zichtbaar_na_selectie(page: Page, tmp_path):
-    """Na het selecteren van een bestand is de ×-verwijderknop zichtbaar."""
+    """Dekt: TD-07-03 — na het selecteren van een bestand is de ×-verwijderknop zichtbaar."""
     testbestand = tmp_path / "notities.txt"
     testbestand.write_text("inhoud", encoding="utf-8")
 
@@ -87,7 +87,7 @@ def test_verwijderknop_is_zichtbaar_na_selectie(page: Page, tmp_path):
 
 
 def test_verwijderknop_reset_naar_geen_bijlage(page: Page, tmp_path):
-    """Na het klikken op ×-knop keert de UI terug naar 'Geen bijlage'."""
+    """Dekt: TD-07-03 — na het klikken op ×-knop keert de UI terug naar 'Geen bijlage'."""
     testbestand = tmp_path / "notities.txt"
     testbestand.write_text("inhoud", encoding="utf-8")
 
@@ -99,7 +99,7 @@ def test_verwijderknop_reset_naar_geen_bijlage(page: Page, tmp_path):
 
 
 def test_verwijderknop_verdwijnt_na_klikken(page: Page, tmp_path):
-    """Na het klikken op × is de verwijderknop niet meer zichtbaar."""
+    """Dekt: TD-07-03 — na het klikken op × is de verwijderknop niet meer zichtbaar."""
     testbestand = tmp_path / "notities.txt"
     testbestand.write_text("inhoud", encoding="utf-8")
 
@@ -114,7 +114,7 @@ def test_verwijderknop_verdwijnt_na_klikken(page: Page, tmp_path):
 # ---------------------------------------------------------------------------
 
 def test_aanvraag_zonder_bijlage_slaagt(page: Page):
-    """Een aanvraag zonder bijlage wordt succesvol verstuurd (HTTP 200)."""
+    """Dekt: TD-07-04 — een aanvraag zonder bijlage wordt succesvol verstuurd (HTTP 200)."""
     _stub_prompt_response(page)
     _vul_verplichte_velden(page)
     page.get_by_role("button", name="Verstuur").click()
@@ -127,7 +127,7 @@ def test_aanvraag_zonder_bijlage_slaagt(page: Page):
 # ---------------------------------------------------------------------------
 
 def test_sessie_opslaan_stuurt_bijlage_bestandsnaam_mee(page: Page, tmp_path):
-    """Bij het opslaan van een sessie met bijlage wordt 'bijlage_bestandsnaam' meegestuurd."""
+    """Dekt: TD-07-05 — bij het opslaan van een sessie met bijlage wordt 'bijlage_bestandsnaam' meegestuurd."""
     testbestand = tmp_path / "rapport.txt"
     testbestand.write_text("inhoud", encoding="utf-8")
 
@@ -146,6 +146,7 @@ def test_sessie_opslaan_stuurt_bijlage_bestandsnaam_mee(page: Page, tmp_path):
     _vul_verplichte_velden(page)
     page.locator("[name=session-name]").fill("test-sessie")
     page.get_by_role("button", name="Opslaan").click()
+    page.wait_for_selector("[data-testid=save-confirmation]")
 
     assert "bijlage_bestandsnaam" in vastgelegd, (
         f"Veld 'bijlage_bestandsnaam' ontbreekt bij opslaan: {vastgelegd}"
@@ -154,7 +155,7 @@ def test_sessie_opslaan_stuurt_bijlage_bestandsnaam_mee(page: Page, tmp_path):
 
 
 def test_sessie_opslaan_zonder_bijlage_stuurt_null_mee(page: Page):
-    """Bij het opslaan van een sessie zonder bijlage is 'bijlage_bestandsnaam' null."""
+    """Dekt: TD-07-05 — bij het opslaan van een sessie zonder bijlage is 'bijlage_bestandsnaam' null."""
     vastgelegd: dict = {}
 
     def handle(route):
@@ -168,6 +169,7 @@ def test_sessie_opslaan_zonder_bijlage_stuurt_null_mee(page: Page):
     _vul_verplichte_velden(page)
     page.locator("[name=session-name]").fill("test-sessie")
     page.get_by_role("button", name="Opslaan").click()
+    page.wait_for_selector("[data-testid=save-confirmation]")
 
     assert "bijlage_bestandsnaam" in vastgelegd, (
         f"Veld 'bijlage_bestandsnaam' ontbreekt bij opslaan: {vastgelegd}"
@@ -180,7 +182,7 @@ def test_sessie_opslaan_zonder_bijlage_stuurt_null_mee(page: Page):
 # ---------------------------------------------------------------------------
 
 def test_sessie_laden_met_bijlage_toont_bestandsnaam(page: Page):
-    """Bij het laden van een sessie met bijlage toont de UI de opgeslagen bestandsnaam."""
+    """Dekt: TD-07-06 — bij het laden van een sessie met bijlage toont de UI de opgeslagen bestandsnaam."""
     sessie_data = json.dumps({
         "name": "sessie-met-bijlage",
         "provider": "ollama",
@@ -203,7 +205,7 @@ def test_sessie_laden_met_bijlage_toont_bestandsnaam(page: Page):
 
 
 def test_sessie_laden_met_bijlage_toont_herlaad_melding(page: Page):
-    """Bij het laden van een sessie met bijlage toont de UI de melding dat de bijlage niet opnieuw is geladen."""
+    """Dekt: TD-07-06 — bij het laden van een sessie met bijlage toont de UI de melding dat de bijlage niet opnieuw is geladen."""
     sessie_data = json.dumps({
         "name": "sessie-met-bijlage",
         "provider": "ollama",
@@ -228,7 +230,7 @@ def test_sessie_laden_met_bijlage_toont_herlaad_melding(page: Page):
 
 
 def test_sessie_laden_zonder_bijlage_toont_geen_bijlage(page: Page):
-    """Bij het laden van een sessie zonder bijlage toont de UI 'Geen bijlage'."""
+    """Dekt: TD-07-07 — bij het laden van een sessie zonder bijlage toont de UI 'Geen bijlage'."""
     sessie_data = json.dumps({
         "name": "sessie-zonder-bijlage",
         "provider": "ollama",
@@ -251,7 +253,7 @@ def test_sessie_laden_zonder_bijlage_toont_geen_bijlage(page: Page):
 
 
 def test_sessie_laden_zonder_bijlage_veld_geeft_geen_fout(page: Page):
-    """Bestaande sessies zonder 'bijlage_bestandsnaam' kunnen worden geladen zonder foutmelding."""
+    """Dekt: TD-07-07 — bestaande sessies zonder 'bijlage_bestandsnaam' kunnen worden geladen zonder foutmelding."""
     sessie_data = json.dumps({
         "name": "oud-sessie",
         "provider": "ollama",

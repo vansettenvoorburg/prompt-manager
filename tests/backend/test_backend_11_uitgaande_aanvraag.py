@@ -3,7 +3,7 @@ Integratietests voor story 11: Groq-modelkeuze uitbreiden.
 
 Deze tests controleren de samenwerking tussen de promptroute, de
 modelresolutie/-validatie en de daadwerkelijke Groq-aanroep (call_groq).
-In tegenstelling tot tests/test_backend_11.py — waar app.call_groq zelf
+In tegenstelling tot tests/backend/test_backend_11.py — waar app.call_groq zelf
 gemockt wordt — laten deze tests call_groq ongemoeid en mocken alleen de
 netwerklaag (httpx.AsyncClient.post). Zo wordt gecontroleerd of het
 geselecteerde model daadwerkelijk in de uitgaande aanvraag naar de Groq API

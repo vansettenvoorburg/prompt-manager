@@ -39,24 +39,24 @@ def _vul_verplichte_velden(page: Page):
 # ---------------------------------------------------------------------------
 
 def test_provider_dropdown_is_zichtbaar(page: Page):
-    """De UI toont een dropdown om de provider te selecteren."""
+    """Dekt: TD-05-01 — de UI toont een dropdown om de provider te selecteren."""
     expect(page.locator("[data-testid=provider-select]")).to_be_visible()
 
 
 def test_dropdown_heeft_ollama_optie(page: Page):
-    """De dropdown bevat de optie 'Ollama'."""
+    """Dekt: TD-05-02 — de dropdown bevat de optie 'Ollama'."""
     opties = page.locator("[data-testid=provider-select] option").all_text_contents()
     assert any("Ollama" in o or "ollama" in o for o in opties), f"'Ollama' ontbreekt in opties: {opties}"
 
 
 def test_dropdown_heeft_groq_optie(page: Page):
-    """De dropdown bevat de optie 'Groq'."""
+    """Dekt: TD-05-03 — de dropdown bevat de optie 'Groq'."""
     opties = page.locator("[data-testid=provider-select] option").all_text_contents()
     assert any("Groq" in o or "groq" in o for o in opties), f"'Groq' ontbreekt in opties: {opties}"
 
 
 def test_standaard_provider_is_ollama(page: Page):
-    """De standaardwaarde van de dropdown is 'Ollama'."""
+    """Dekt: TD-05-04 — de standaardwaarde van de dropdown is 'Ollama'."""
     geselecteerde_waarde = page.locator("[data-testid=provider-select]").input_value()
     assert geselecteerde_waarde.lower() == "ollama", f"Standaard provider is niet ollama: {geselecteerde_waarde!r}"
 
@@ -66,7 +66,7 @@ def test_standaard_provider_is_ollama(page: Page):
 # ---------------------------------------------------------------------------
 
 def test_ollama_provider_meegestuurd_in_aanvraag(page: Page):
-    """Bij standaard (Ollama) wordt provider='ollama' meegestuurd in de aanvraag."""
+    """Dekt: TD-05-05 — bij standaard (Ollama) wordt provider='ollama' meegestuurd in de aanvraag."""
     vastgelegd: dict = {}
 
     def vang_op(route):
@@ -85,7 +85,7 @@ def test_ollama_provider_meegestuurd_in_aanvraag(page: Page):
 
 
 def test_groq_provider_meegestuurd_in_aanvraag(page: Page):
-    """Als Groq geselecteerd is, wordt provider='groq' meegestuurd in de aanvraag."""
+    """Dekt: TD-05-05 — als Groq geselecteerd is, wordt provider='groq' meegestuurd in de aanvraag."""
     vastgelegd: dict = {}
 
     def vang_op(route):
@@ -109,7 +109,7 @@ def test_groq_provider_meegestuurd_in_aanvraag(page: Page):
 # ---------------------------------------------------------------------------
 
 def test_sessie_laden_herstelt_provider_in_dropdown(page: Page):
-    """Bij het laden van een sessie met provider='groq' wordt Groq geselecteerd in de dropdown."""
+    """Dekt: TD-05-06 — bij het laden van een sessie met provider='groq' wordt Groq geselecteerd in de dropdown."""
     sessie_data = json.dumps({
         "name": "test-groq",
         "provider": "groq",
@@ -144,7 +144,7 @@ def test_sessie_laden_herstelt_provider_in_dropdown(page: Page):
 
 
 def test_sessie_laden_herstelt_ollama_provider(page: Page):
-    """Bij het laden van een sessie met provider='ollama' wordt Ollama geselecteerd in de dropdown."""
+    """Dekt: TD-05-06 — bij het laden van een sessie met provider='ollama' wordt Ollama geselecteerd in de dropdown."""
     sessie_data = json.dumps({
         "name": "test-ollama",
         "provider": "ollama",
@@ -183,7 +183,7 @@ def test_sessie_laden_herstelt_ollama_provider(page: Page):
 # ---------------------------------------------------------------------------
 
 def test_groq_fout_toont_foutmelding(page: Page):
-    """Als de Groq API een fout retourneert (503), toont de UI een foutmelding."""
+    """Dekt: TD-05-07 — als de Groq API een fout retourneert (503), toont de UI een foutmelding."""
     page.route(PROMPT_ROUTE, lambda route: route.fulfill(
         status=503,
         content_type="application/json",
@@ -197,7 +197,7 @@ def test_groq_fout_toont_foutmelding(page: Page):
 
 
 def test_groq_fout_geen_stille_mislukking(page: Page):
-    """Een Groq-fout resulteert in een zichtbare melding, niet in een lege response-sectie."""
+    """Dekt: TD-05-07 — een Groq-fout resulteert in een zichtbare melding, niet in een lege response-sectie."""
     page.route(PROMPT_ROUTE, lambda route: route.fulfill(
         status=503,
         content_type="application/json",

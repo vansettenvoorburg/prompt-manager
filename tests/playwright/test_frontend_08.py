@@ -70,12 +70,12 @@ def _stub_response_met_reviewer(page: Page):
 # ---------------------------------------------------------------------------
 
 def test_reviewer_toevoegen_knop_is_aanwezig(page: Page):
-    """De UI toont een knop om een reviewer toe te voegen."""
+    """Dekt: TD-08-01 — de UI toont een knop om een reviewer toe te voegen."""
     expect(page.locator("[data-testid=reviewer-toevoegen]")).to_be_visible()
 
 
 def test_review_modus_selector_is_aanwezig(page: Page):
-    """De UI toont een keuzemenu voor de reviewmodus."""
+    """Dekt: TD-08-11 — de UI toont een keuzemenu voor de reviewmodus."""
     expect(page.locator("[data-testid=review-modus-select]")).to_be_attached()
 
 
@@ -84,13 +84,13 @@ def test_review_modus_selector_is_aanwezig(page: Page):
 # ---------------------------------------------------------------------------
 
 def test_reviewer_toevoegen_toont_invoervelden(page: Page):
-    """Na klikken op 'Reviewer toevoegen' zijn de invoervelden zichtbaar."""
+    """Dekt: TD-08-01 — na klikken op 'Reviewer toevoegen' zijn de invoervelden zichtbaar."""
     page.locator("[data-testid=reviewer-toevoegen]").click()
     expect(page.locator("[data-testid=reviewer-item]").first).to_be_visible()
 
 
 def test_reviewer_rol_invoerveld_is_aanwezig_na_toevoegen(page: Page):
-    """Na toevoegen van een reviewer is een invoerveld voor de rol zichtbaar."""
+    """Dekt: TD-08-02 — na toevoegen van een reviewer is een invoerveld voor de rol zichtbaar."""
     page.locator("[data-testid=reviewer-toevoegen]").click()
     expect(
         page.locator("[data-testid=reviewer-item] [data-testid=reviewer-rol]").first
@@ -98,15 +98,31 @@ def test_reviewer_rol_invoerveld_is_aanwezig_na_toevoegen(page: Page):
 
 
 def test_reviewer_omschrijving_invoerveld_is_aanwezig_na_toevoegen(page: Page):
-    """Na toevoegen van een reviewer is een invoerveld voor de omschrijving zichtbaar."""
+    """Dekt: TD-08-03 — na toevoegen van een reviewer is een invoerveld voor de omschrijving zichtbaar."""
     page.locator("[data-testid=reviewer-toevoegen]").click()
     expect(
         page.locator("[data-testid=reviewer-item] [data-testid=reviewer-omschrijving]").first
     ).to_be_visible()
 
 
+def test_reviewer_runs_invoerveld_is_aanwezig_na_toevoegen(page: Page):
+    """Dekt: TD-08-04 — na toevoegen van een reviewer is een invoerveld voor het aantal runs zichtbaar."""
+    page.locator("[data-testid=reviewer-toevoegen]").click()
+    expect(
+        page.locator("[data-testid=reviewer-item] [data-testid=reviewer-runs]").first
+    ).to_be_visible()
+
+
+def test_reviewer_temperatures_invoerveld_is_aanwezig_na_toevoegen(page: Page):
+    """Dekt: TD-08-05 — na toevoegen van een reviewer is een invoerveld voor de temperatures zichtbaar."""
+    page.locator("[data-testid=reviewer-toevoegen]").click()
+    expect(
+        page.locator("[data-testid=reviewer-item] [data-testid=reviewer-temperatures]").first
+    ).to_be_visible()
+
+
 def test_meerdere_reviewers_kunnen_worden_toegevoegd(page: Page):
-    """De gebruiker kan meerdere reviewers toevoegen."""
+    """Dekt: TD-08-01 — de gebruiker kan meerdere reviewers toevoegen."""
     page.locator("[data-testid=reviewer-toevoegen]").click()
     page.locator("[data-testid=reviewer-toevoegen]").click()
     expect(page.locator("[data-testid=reviewer-item]")).to_have_count(2)
@@ -117,13 +133,13 @@ def test_meerdere_reviewers_kunnen_worden_toegevoegd(page: Page):
 # ---------------------------------------------------------------------------
 
 def test_reviewer_verwijder_knop_is_zichtbaar(page: Page):
-    """Na toevoegen van een reviewer is de verwijderknop zichtbaar."""
+    """Dekt: TD-08-06 — na toevoegen van een reviewer is de verwijderknop zichtbaar."""
     page.locator("[data-testid=reviewer-toevoegen]").click()
     expect(page.locator("[data-testid=reviewer-verwijder]").first).to_be_visible()
 
 
 def test_reviewer_verwijderen_verwijdert_item(page: Page):
-    """Na klikken op de verwijderknop verdwijnt de reviewer uit de lijst."""
+    """Dekt: TD-08-06 — na klikken op de verwijderknop verdwijnt de reviewer uit de lijst."""
     page.locator("[data-testid=reviewer-toevoegen]").click()
     page.locator("[data-testid=reviewer-verwijder]").first.click()
     expect(page.locator("[data-testid=reviewer-item]")).to_have_count(0)
@@ -134,7 +150,7 @@ def test_reviewer_verwijderen_verwijdert_item(page: Page):
 # ---------------------------------------------------------------------------
 
 def test_sessie_opslaan_stuurt_reviewers_mee(page: Page):
-    """Bij het opslaan van een sessie met reviewers worden ze meegestuurd."""
+    """Dekt: TD-08-08 — bij het opslaan van een sessie met reviewers worden ze meegestuurd."""
     vastgelegd: dict = {}
 
     def handle(route):
@@ -151,6 +167,7 @@ def test_sessie_opslaan_stuurt_reviewers_mee(page: Page):
     page.locator("[data-testid=reviewer-item] [data-testid=reviewer-omschrijving]").first.fill("Controleer op volledigheid.")
     page.locator("[name=session-name]").fill("test-sessie")
     page.get_by_role("button", name="Opslaan").click()
+    page.wait_for_selector("[data-testid=save-confirmation]")
 
     assert "reviewers" in vastgelegd, (
         f"Veld 'reviewers' ontbreekt bij opslaan: {vastgelegd}"
@@ -160,7 +177,7 @@ def test_sessie_opslaan_stuurt_reviewers_mee(page: Page):
 
 
 def test_sessie_opslaan_stuurt_omschrijving_mee(page: Page):
-    """Bij het opslaan van een sessie met reviewers wordt de omschrijving meegestuurd."""
+    """Dekt: TD-08-08 — bij het opslaan van een sessie met reviewers wordt de omschrijving meegestuurd."""
     vastgelegd: dict = {}
 
     def handle(route):
@@ -177,6 +194,7 @@ def test_sessie_opslaan_stuurt_omschrijving_mee(page: Page):
     page.locator("[data-testid=reviewer-item] [data-testid=reviewer-omschrijving]").first.fill("Controleer op volledigheid.")
     page.locator("[name=session-name]").fill("test-sessie")
     page.get_by_role("button", name="Opslaan").click()
+    page.wait_for_selector("[data-testid=save-confirmation]")
 
     assert "omschrijving" in vastgelegd["reviewers"][0], (
         f"'omschrijving' ontbreekt in meegestuurde reviewer: {vastgelegd.get('reviewers')}"
@@ -185,7 +203,7 @@ def test_sessie_opslaan_stuurt_omschrijving_mee(page: Page):
 
 
 def test_sessie_opslaan_stuurt_review_modus_mee(page: Page):
-    """Bij het opslaan wordt 'review_modus' meegestuurd."""
+    """Dekt: TD-08-09 — bij het opslaan wordt 'review_modus' meegestuurd."""
     vastgelegd: dict = {}
 
     def handle(route):
@@ -199,6 +217,7 @@ def test_sessie_opslaan_stuurt_review_modus_mee(page: Page):
     _vul_verplichte_velden(page)
     page.locator("[name=session-name]").fill("test-sessie")
     page.get_by_role("button", name="Opslaan").click()
+    page.wait_for_selector("[data-testid=save-confirmation]")
 
     assert "review_modus" in vastgelegd, (
         f"Veld 'review_modus' ontbreekt bij opslaan: {vastgelegd}"
@@ -206,7 +225,7 @@ def test_sessie_opslaan_stuurt_review_modus_mee(page: Page):
 
 
 def test_sessie_opslaan_zonder_reviewers_stuurt_lege_lijst(page: Page):
-    """Bij het opslaan zonder reviewers is 'reviewers' een lege lijst."""
+    """Dekt: TD-08-08 — bij het opslaan zonder reviewers is 'reviewers' een lege lijst."""
     vastgelegd: dict = {}
 
     def handle(route):
@@ -220,6 +239,7 @@ def test_sessie_opslaan_zonder_reviewers_stuurt_lege_lijst(page: Page):
     _vul_verplichte_velden(page)
     page.locator("[name=session-name]").fill("test-sessie")
     page.get_by_role("button", name="Opslaan").click()
+    page.wait_for_selector("[data-testid=save-confirmation]")
 
     assert vastgelegd.get("reviewers") == [], (
         f"'reviewers' is niet leeg bij opslaan zonder reviewers: {vastgelegd.get('reviewers')}"
@@ -231,7 +251,7 @@ def test_sessie_opslaan_zonder_reviewers_stuurt_lege_lijst(page: Page):
 # ---------------------------------------------------------------------------
 
 def test_sessie_laden_vult_reviewers_in(page: Page):
-    """Bij het laden van een sessie met reviewers worden de reviewer-items weergegeven."""
+    """Dekt: TD-08-10 — bij het laden van een sessie met reviewers worden de reviewer-items weergegeven."""
     sessie_data = json.dumps({
         "name": "sessie-met-reviewers",
         "provider": "ollama",
@@ -255,7 +275,7 @@ def test_sessie_laden_vult_reviewers_in(page: Page):
 
 
 def test_sessie_laden_toont_reviewerrol(page: Page):
-    """Bij het laden van een sessie wordt de reviewerrol ingevuld."""
+    """Dekt: TD-08-10 — bij het laden van een sessie wordt de reviewerrol ingevuld."""
     sessie_data = json.dumps({
         "name": "sessie-met-reviewers",
         "provider": "ollama",
@@ -282,7 +302,7 @@ def test_sessie_laden_toont_reviewerrol(page: Page):
 
 
 def test_sessie_laden_toont_revieweromschrijving(page: Page):
-    """Bij het laden van een sessie wordt de omschrijving van de reviewer ingevuld."""
+    """Dekt: TD-08-10 — bij het laden van een sessie wordt de omschrijving van de reviewer ingevuld."""
     sessie_data = json.dumps({
         "name": "sessie-met-reviewers",
         "provider": "ollama",
@@ -309,7 +329,7 @@ def test_sessie_laden_toont_revieweromschrijving(page: Page):
 
 
 def test_sessie_laden_zonder_reviewers_toont_geen_reviewer_items(page: Page):
-    """Bij het laden van een sessie zonder reviewers zijn er geen reviewer-items."""
+    """Dekt: TD-08-10 — bij het laden van een sessie zonder reviewers zijn er geen reviewer-items."""
     sessie_data = json.dumps({
         "name": "sessie-zonder-reviewers",
         "provider": "ollama",
@@ -337,7 +357,7 @@ def test_sessie_laden_zonder_reviewers_toont_geen_reviewer_items(page: Page):
 # ---------------------------------------------------------------------------
 
 def test_uitvoer_toont_reviewer_stap(page: Page):
-    """Na uitvoering met reviewers toont de UI de uitvoer van de reviewer-stap."""
+    """Dekt: TD-08-12 — na uitvoering met reviewers toont de UI de uitvoer van de reviewer-stap."""
     _stub_response_met_reviewer(page)
     _vul_verplichte_velden(page)
     page.locator("[data-testid=reviewer-toevoegen]").click()
@@ -348,7 +368,7 @@ def test_uitvoer_toont_reviewer_stap(page: Page):
 
 
 def test_uitvoer_toont_eindoutput(page: Page):
-    """Na uitvoering met reviewers is de eindoutput zichtbaar."""
+    """Dekt: TD-08-13 — na uitvoering met reviewers is de eindoutput zichtbaar."""
     _stub_response_met_reviewer(page)
     _vul_verplichte_velden(page)
     page.locator("[data-testid=reviewer-toevoegen]").click()

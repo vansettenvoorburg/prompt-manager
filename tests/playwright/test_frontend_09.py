@@ -54,30 +54,30 @@ def go_to_app(page: Page):
 # ---------------------------------------------------------------------------
 
 def test_instellingen_tab_is_aanwezig(page: Page):
-    """Er is een 'Instellingen'-tab in de navigatie."""
+    """Dekt: TD-09-01 — er is een 'Instellingen'-tab in de navigatie."""
     expect(page.locator("[data-testid=tab-instellingen]")).to_be_visible()
 
 
 def test_instellingen_tab_opent_paneel(page: Page):
-    """Na klikken op de Instellingen-tab is het instellingenpaneel zichtbaar."""
+    """Dekt: TD-09-01 — na klikken op de Instellingen-tab is het instellingenpaneel zichtbaar."""
     page.locator("[data-testid=tab-instellingen]").click()
     expect(page.locator("[data-testid=instellingen-paneel]")).to_be_visible()
 
 
 def test_groq_rpm_veld_is_aanwezig(page: Page):
-    """Het Groq RPM-invoerveld is aanwezig in de Instellingen-tab."""
+    """Dekt: TD-09-02 — het Groq RPM-invoerveld is aanwezig in de Instellingen-tab."""
     page.locator("[data-testid=tab-instellingen]").click()
     expect(page.locator("[data-testid=groq-rpm-input]")).to_be_visible()
 
 
 def test_google_rpm_veld_is_aanwezig(page: Page):
-    """Het Google RPM-invoerveld is aanwezig in de Instellingen-tab."""
+    """Dekt: TD-09-03 — het Google RPM-invoerveld is aanwezig in de Instellingen-tab."""
     page.locator("[data-testid=tab-instellingen]").click()
     expect(page.locator("[data-testid=google-rpm-input]")).to_be_visible()
 
 
 def test_ollama_rpm_veld_is_niet_aanwezig(page: Page):
-    """Er is geen Ollama RPM-veld in de Instellingen-tab."""
+    """Dekt: TD-09-04 — er is geen Ollama RPM-veld in de Instellingen-tab."""
     page.locator("[data-testid=tab-instellingen]").click()
     expect(page.locator("[data-testid=ollama-rpm-input]")).not_to_be_attached()
 
@@ -87,14 +87,14 @@ def test_ollama_rpm_veld_is_niet_aanwezig(page: Page):
 # ---------------------------------------------------------------------------
 
 def test_groq_rpm_toont_geladen_waarde(page: Page):
-    """Het Groq RPM-veld toont de waarde die via GET /api/settings is opgehaald."""
+    """Dekt: TD-09-05 — het Groq RPM-veld toont de waarde die via GET /api/settings is opgehaald."""
     page.locator("[data-testid=tab-instellingen]").click()
     waarde = page.locator("[data-testid=groq-rpm-input]").input_value()
     assert waarde == "30", f"Verwacht '30' als Groq RPM, maar kreeg {waarde!r}"
 
 
 def test_google_rpm_toont_geladen_waarde(page: Page):
-    """Het Google RPM-veld toont de waarde die via GET /api/settings is opgehaald."""
+    """Dekt: TD-09-05 — het Google RPM-veld toont de waarde die via GET /api/settings is opgehaald."""
     page.locator("[data-testid=tab-instellingen]").click()
     waarde = page.locator("[data-testid=google-rpm-input]").input_value()
     assert waarde == "15", f"Verwacht '15' als Google RPM, maar kreeg {waarde!r}"
@@ -105,7 +105,7 @@ def test_google_rpm_toont_geladen_waarde(page: Page):
 # ---------------------------------------------------------------------------
 
 def test_opslaan_verstuurt_put_naar_api_settings(page: Page):
-    """Bij het klikken op 'Instellingen opslaan' wordt PUT /api/settings verstuurd."""
+    """Dekt: TD-09-06 — bij het klikken op 'Instellingen opslaan' wordt PUT /api/settings verstuurd."""
     verzoeken = []
 
     def vang_op(route):
@@ -124,7 +124,7 @@ def test_opslaan_verstuurt_put_naar_api_settings(page: Page):
 
 
 def test_opslaan_stuurt_groq_rpm_waarde_mee(page: Page):
-    """De ingevoerde Groq RPM-waarde wordt meegestuurd bij het opslaan."""
+    """Dekt: TD-09-06 — de ingevoerde Groq RPM-waarde wordt meegestuurd bij het opslaan."""
     vastgelegd: dict = {}
 
     def vang_op(route):
@@ -146,7 +146,7 @@ def test_opslaan_stuurt_groq_rpm_waarde_mee(page: Page):
 
 
 def test_opslaan_stuurt_google_rpm_waarde_mee(page: Page):
-    """De ingevoerde Google RPM-waarde wordt meegestuurd bij het opslaan."""
+    """Dekt: TD-09-06 — de ingevoerde Google RPM-waarde wordt meegestuurd bij het opslaan."""
     vastgelegd: dict = {}
 
     def vang_op(route):

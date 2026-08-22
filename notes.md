@@ -1,5 +1,56 @@
 # Notes
 
+## Story 13 — Testdekkingsdocument en herstructurering testsuite
+
+### Wat is opgeleverd
+
+- `specs/testdekking.md`: 186 dekkingsitems (TD-01-01 t/m TD-11-19), afgeleid van
+  `acceptatiecriteria/01` t/m `/12`, elk gemarkeerd `playwright` of
+  `reeds gedekt door backend/integratie` met testverwijzing.
+- Tests herstructureerd naar `tests/playwright/`, `tests/integratie/`, `tests/backend/`
+  (indeling volgt de gebruikte fixture — `client` vs `live_client` — niet de oude
+  bestandsnaam). `tests/test_integratie_11.py` gebruikte al de in-process `client`-fixture en
+  is hernoemd naar `tests/backend/test_backend_11_uitgaande_aanvraag.py`.
+- Elke Playwright-test heeft nu `Dekt: TD-xx-yy` in zijn docstring (143 tests, 1:1 met de
+  dekkingsitems in categorie `playwright`).
+- `tests/playwright/test_frontend.py` (story 01) teruggebracht van 6 naar 1 test: de overige
+  5 waren letterlijke duplicaten van story 02 (achterwaartse-compat-tests met identieke code).
+- 2 nieuwe Playwright-tests toegevoegd voor bestaand maar ongetest gedrag (story 08:
+  `reviewer-runs`/`reviewer-temperatures`-invoervelden bestonden al in `static/app.js` maar
+  hadden geen test).
+
+### Bevinding: 2 AC-bullets beschrijven niet-geïmplementeerd gedrag
+
+- Story 06: "UI toont de voortgang per run" — geen voortgangsindicator in `static/app.js`.
+- Story 08: "gebruiker kan reviewers herordenen" — geen herordenknoppen/drag-and-drop.
+
+Op instructie van de gebruiker gemarkeerd in `specs/testdekking.md` als
+❌ niet geïmplementeerd — geen test mogelijk (TD-06-16, TD-08-07). Geen nieuwe
+applicatiefunctionaliteit gebouwd (buiten scope story 13).
+
+### Bevinding en fix: sporadische race condition in "sessie opslaan stuurt X mee"-tests
+
+Bij het verplichte 3x-achter-elkaar-draaien (zelfde controle als story 12) faalde
+`test_sessie_opslaan_stuurt_reviewers_mee` (`tests/playwright/test_frontend_08.py`)
+1 op de ~3 runs met een `AssertionError` op het ontbrekende `reviewers`-veld. Oorzaak: de
+test asserteerde op de opgevangen requestbody direct na `.click()` op de Opslaan-knop, zonder
+te wachten tot de save daadwerkelijk was afgerond — `.click()` wacht alleen op het dispatchen
+van het click-event, niet op de daaropvolgende async `fetch()` in `static/app.js`.
+
+**2026-08-22 opgelost, met expliciete toestemming van de gebruiker** (dit is normaliter niet
+toegestaan binnen story 13 — alleen locatie/naam/ID-verwijzing van bestaande tests mag
+veranderen): `page.wait_for_selector("[data-testid=save-confirmation]")` toegevoegd na de
+`Opslaan`-klik, vóór de assertie, in alle 9 tests met hetzelfde patroon
+(`test_frontend_06.py` ×3, `test_frontend_07.py` ×2, `test_frontend_08.py` ×4,
+`test_frontend_11.py` ×1). Geverifieerd: 4x achter elkaar groen op de getroffen bestanden,
+en de volledige `tests/playwright`-suite 3x achter elkaar groen (146 tests, geen fails) ná de fix.
+
+### Regressiecontrole (zelfde controle als story 12)
+
+- `pytest tests/backend` — 227 tests, 3x achter elkaar groen (~12s per run)
+- `pytest tests/integratie` — 19 tests, 3x achter elkaar groen (~16s per run)
+- `pytest tests/playwright` — 146 tests, 3x achter elkaar groen (~90s per run, ná de race-condition-fix)
+
 ## Story 12 — Betrouwbare volledige testsuite
 
 ### Bevinding: `frontend`-marker (story 09) loste het probleem al op, alleen niemand gebruikte hem

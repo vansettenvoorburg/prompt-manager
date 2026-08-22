@@ -34,7 +34,7 @@ def _vul_verplichte_velden(page: Page):
 # ---------------------------------------------------------------------------
 
 def test_log_opgeslagen_melding_zichtbaar_na_aanvraag(page: Page):
-    """Na een succesvolle aanvraag toont de UI 'Log opgeslagen' met het bestandspad."""
+    """Dekt: TD-04-01 — na een succesvolle aanvraag toont de UI 'Log opgeslagen' met het bestandspad."""
     page.route(PROMPT_ROUTE, lambda route: route.fulfill(
         status=200,
         content_type="application/json",
@@ -52,7 +52,7 @@ def test_log_opgeslagen_melding_zichtbaar_na_aanvraag(page: Page):
 # ---------------------------------------------------------------------------
 
 def test_log_mislukt_toont_waarschuwing(page: Page):
-    """Als logging mislukt (log_warning in response), toont de UI een waarschuwing."""
+    """Dekt: TD-04-02 — als logging mislukt (log_warning in response), toont de UI een waarschuwing."""
     page.route(PROMPT_ROUTE, lambda route: route.fulfill(
         status=200,
         content_type="application/json",
@@ -65,7 +65,7 @@ def test_log_mislukt_toont_waarschuwing(page: Page):
 
 
 def test_log_mislukt_toont_antwoord_toch(page: Page):
-    """Bij een logfout wordt het modelantwoord nog steeds getoond."""
+    """Dekt: TD-04-02 — bij een logfout wordt het modelantwoord nog steeds getoond."""
     page.route(PROMPT_ROUTE, lambda route: route.fulfill(
         status=200,
         content_type="application/json",
