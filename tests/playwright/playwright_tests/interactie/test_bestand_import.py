@@ -11,67 +11,50 @@ IMPORT-I-02 (bijlagetekst toegevoegd met label 'Bijlage:') en IMPORT-I-03 (bijla
 meegestuurd bij elke taak/reviewstap) worden gedekt door de backend/integratietests
 (tests/backend/) — geen aparte Playwright-test nodig.
 """
-import json
 import pytest
-from playwright.sync_api import Page, expect
+from playwright.sync_api import Page
 
 from tests.conftest import BASE_URL
-
-PROMPT_ROUTE = "**/api/prompt"
-SESSIONS_ROUTE = "**/api/sessions"
-SESSION_ITEM_ROUTE = "**/api/sessions/*"
+from tests.playwright.mocks import stub_lege_sessies, stub_prompt_response, stub_sessie_item, stub_sessies_met_doorgang
+from tests.playwright.pages.prompt_page import PromptPage
 
 
 @pytest.fixture(autouse=True)
-def go_to_app(page: Page):
-    page.route(SESSIONS_ROUTE, lambda route: route.fulfill(
-        status=200, content_type="application/json", body='{"sessions": []}',
-    ))
-    page.goto(BASE_URL)
-
-
-def _vul_verplichte_velden(page: Page):
-    page.locator("[name=rol]").fill("Python developer")
-    page.locator("[name=taak]").fill("een API bouwen")
-    page.locator("[name=doel]").fill("data te verwerken")
-
-
-def _stub_prompt_response(page: Page):
-    page.route(PROMPT_ROUTE, lambda route: route.fulfill(
-        status=200, content_type="application/json",
-        body=json.dumps({"runs": [{"run_nummer": 1, "temperature": 0.7, "response": "antwoord", "log_status": "ok"}]}),
-    ))
+def app(page: Page) -> PromptPage:
+    stub_lege_sessies(page)
+    pagina = PromptPage(page)
+    pagina.open(BASE_URL)
+    return pagina
 
 
 # ---------------------------------------------------------------------------
 # IMPORT-I-01 — bijlage verwijderen
 # ---------------------------------------------------------------------------
 
-def test_verwijderknop_reset_naar_geen_bijlage(page: Page, tmp_path):
+def test_verwijderknop_reset_naar_geen_bijlage(app: PromptPage, tmp_path):
     """Testcode: bestand_import.interactie.01
     Dekt: IMPORT-I-01 — na het klikken op ×-knop keert de UI terug naar 'Geen bijlage'.
     """
     testbestand = tmp_path / "notities.txt"
     testbestand.write_text("inhoud", encoding="utf-8")
 
-    page.locator("[data-testid=bijlage-input]").set_input_files(str(testbestand))
-    page.locator("[data-testid=bijlage-verwijder]").click()
+    app.upload_bijlage(str(testbestand))
+    app.verwijder_bijlage()
 
-    tekst = page.locator("[data-testid=bijlage-status]").inner_text()
-    assert "Geen bijlage" in tekst, f"UI staat niet terug op 'Geen bijlage' na verwijderen: {tekst!r}"
+    app.expect_bijlage_status_bevat("Geen bijlage")
 
 
-def test_verwijderknop_verdwijnt_na_klikken(page: Page, tmp_path):
+def test_verwijderknop_verdwijnt_na_klikken(app: PromptPage, tmp_path):
     """Testcode: bestand_import.interactie.02
     Dekt: IMPORT-I-01 — na het klikken op × is de verwijderknop niet meer zichtbaar.
     """
     testbestand = tmp_path / "notities.txt"
     testbestand.write_text("inhoud", encoding="utf-8")
 
-    page.locator("[data-testid=bijlage-input]").set_input_files(str(testbestand))
-    page.locator("[data-testid=bijlage-verwijder]").click()
+    app.upload_bijlage(str(testbestand))
+    app.verwijder_bijlage()
 
-    expect(page.locator("[data-testid=bijlage-verwijder]")).not_to_be_visible()
+    app.expect_bijlage_verwijder_knop_niet_zichtbaar()
 
 
 # ---------------------------------------------------------------------------
@@ -79,18 +62,18 @@ def test_verwijderknop_verdwijnt_na_klikken(page: Page, tmp_path):
 # gerelateerd aan IMPORT-I-02/I-03 — bijlage mag ontbreken zonder gedrag te breken)
 # ---------------------------------------------------------------------------
 
-def test_aanvraag_zonder_bijlage_slaagt(page: Page):
+def test_aanvraag_zonder_bijlage_slaagt(app: PromptPage):
     """Testcode: bestand_import.interactie.03
     Regressie — een aanvraag zonder bijlage wordt succesvol verstuurd (HTTP 200).
     """
-    _stub_prompt_response(page)
-    _vul_verplichte_velden(page)
-    page.get_by_role("button", name="Verstuur").click()
+    stub_prompt_response(app.page)
+    app.vul_verplichte_velden()
+    app.verstuur()
 
-    expect(page.locator("[data-testid=run-results]")).to_be_visible()
+    app.expect_run_results_zichtbaar()
 
 
-def test_sessie_opslaan_stuurt_bijlage_bestandsnaam_mee(page: Page, tmp_path):
+def test_sessie_opslaan_stuurt_bijlage_bestandsnaam_mee(app: PromptPage, tmp_path):
     """Testcode: bestand_import.interactie.04
     Regressie — bij het opslaan van een sessie met bijlage wordt 'bijlage_bestandsnaam' meegestuurd.
     """
@@ -106,13 +89,13 @@ def test_sessie_opslaan_stuurt_bijlage_bestandsnaam_mee(page: Page, tmp_path):
         else:
             route.fulfill(status=200, content_type="application/json", body='{"sessions": []}')
 
-    page.route(SESSIONS_ROUTE, handle)
+    app.page.route("**/api/sessions", handle)
 
-    page.locator("[data-testid=bijlage-input]").set_input_files(str(testbestand))
-    _vul_verplichte_velden(page)
-    page.locator("[name=session-name]").fill("test-sessie")
-    page.get_by_role("button", name="Opslaan").click()
-    page.wait_for_selector("[data-testid=save-confirmation]")
+    app.upload_bijlage(str(testbestand))
+    app.vul_verplichte_velden()
+    app.sidebar.fill_naam("test-sessie")
+    app.sidebar.opslaan()
+    app.sidebar.wacht_op_bevestiging()
 
     assert "bijlage_bestandsnaam" in vastgelegd, (
         f"Veld 'bijlage_bestandsnaam' ontbreekt bij opslaan: {vastgelegd}"
@@ -120,7 +103,7 @@ def test_sessie_opslaan_stuurt_bijlage_bestandsnaam_mee(page: Page, tmp_path):
     assert vastgelegd["bijlage_bestandsnaam"] == "rapport.txt"
 
 
-def test_sessie_opslaan_zonder_bijlage_stuurt_null_mee(page: Page):
+def test_sessie_opslaan_zonder_bijlage_stuurt_null_mee(app: PromptPage):
     """Testcode: bestand_import.interactie.05
     Regressie — bij het opslaan van een sessie zonder bijlage is 'bijlage_bestandsnaam' null.
     """
@@ -133,11 +116,11 @@ def test_sessie_opslaan_zonder_bijlage_stuurt_null_mee(page: Page):
         else:
             route.fulfill(status=200, content_type="application/json", body='{"sessions": []}')
 
-    page.route(SESSIONS_ROUTE, handle)
-    _vul_verplichte_velden(page)
-    page.locator("[name=session-name]").fill("test-sessie")
-    page.get_by_role("button", name="Opslaan").click()
-    page.wait_for_selector("[data-testid=save-confirmation]")
+    app.page.route("**/api/sessions", handle)
+    app.vul_verplichte_velden()
+    app.sidebar.fill_naam("test-sessie")
+    app.sidebar.opslaan()
+    app.sidebar.wacht_op_bevestiging()
 
     assert "bijlage_bestandsnaam" in vastgelegd, (
         f"Veld 'bijlage_bestandsnaam' ontbreekt bij opslaan: {vastgelegd}"
@@ -149,89 +132,71 @@ def test_sessie_opslaan_zonder_bijlage_stuurt_null_mee(page: Page):
 # IMPORT-I-05 — sessie laden herstelt bijlagestatus
 # ---------------------------------------------------------------------------
 
-def test_sessie_laden_met_bijlage_toont_bestandsnaam(page: Page):
+def test_sessie_laden_met_bijlage_toont_bestandsnaam(app: PromptPage):
     """Testcode: bestand_import.interactie.06
     Dekt: IMPORT-I-05 — bij het laden van een sessie met bijlage toont de UI de opgeslagen bestandsnaam.
     """
-    sessie_data = json.dumps({
+    sessie_data = {
         "name": "sessie-met-bijlage", "provider": "ollama",
         "rol": "tester", "taak": "testen", "doel": "kwaliteit bewaken",
         "bijlage_bestandsnaam": "document.pdf",
-    })
-    page.route(SESSIONS_ROUTE, lambda route: route.fulfill(
-        status=200, content_type="application/json", body='{"sessions": ["sessie-met-bijlage"]}',
-    ))
-    page.route(SESSION_ITEM_ROUTE, lambda route: route.fulfill(
-        status=200, content_type="application/json", body=sessie_data,
-    ))
-    page.reload()
-    page.locator("[data-testid=session-select]").select_option("sessie-met-bijlage")
+    }
+    stub_sessies_met_doorgang(app.page, ["sessie-met-bijlage"])
+    stub_sessie_item(app.page, "sessie-met-bijlage", sessie_data)
+    app.reload()
+    app.sidebar.selecteer_via_dropdown("sessie-met-bijlage")
 
-    tekst = page.locator("[data-testid=bijlage-status]").inner_text()
-    assert "document.pdf" in tekst, f"Bestandsnaam ontbreekt na laden sessie: {tekst!r}"
+    app.expect_bijlage_status_bevat("document.pdf")
 
 
-def test_sessie_laden_met_bijlage_toont_herlaad_melding(page: Page):
+def test_sessie_laden_met_bijlage_toont_herlaad_melding(app: PromptPage):
     """Testcode: bestand_import.interactie.07
     Dekt: IMPORT-I-05 — bij het laden van een sessie met bijlage toont de UI de melding dat de bijlage niet opnieuw is geladen.
     """
-    sessie_data = json.dumps({
+    sessie_data = {
         "name": "sessie-met-bijlage", "provider": "ollama",
         "rol": "tester", "taak": "testen", "doel": "kwaliteit bewaken",
         "bijlage_bestandsnaam": "document.pdf",
-    })
-    page.route(SESSIONS_ROUTE, lambda route: route.fulfill(
-        status=200, content_type="application/json", body='{"sessions": ["sessie-met-bijlage"]}',
-    ))
-    page.route(SESSION_ITEM_ROUTE, lambda route: route.fulfill(
-        status=200, content_type="application/json", body=sessie_data,
-    ))
-    page.reload()
-    page.locator("[data-testid=session-select]").select_option("sessie-met-bijlage")
+    }
+    stub_sessies_met_doorgang(app.page, ["sessie-met-bijlage"])
+    stub_sessie_item(app.page, "sessie-met-bijlage", sessie_data)
+    app.reload()
+    app.sidebar.selecteer_via_dropdown("sessie-met-bijlage")
 
-    tekst = page.locator("[data-testid=bijlage-status]").inner_text()
+    tekst = app.bijlage_status.inner_text()
     assert "niet opnieuw geladen" in tekst.lower() or "upload" in tekst.lower(), (
         f"Herlaad-melding ontbreekt na laden sessie: {tekst!r}"
     )
 
 
-def test_sessie_laden_zonder_bijlage_toont_geen_bijlage(page: Page):
+def test_sessie_laden_zonder_bijlage_toont_geen_bijlage(app: PromptPage):
     """Testcode: bestand_import.interactie.08
     Dekt: IMPORT-I-05 — bij het laden van een sessie zonder bijlage toont de UI 'Geen bijlage'.
     """
-    sessie_data = json.dumps({
+    sessie_data = {
         "name": "sessie-zonder-bijlage", "provider": "ollama",
         "rol": "tester", "taak": "testen", "doel": "kwaliteit bewaken",
         "bijlage_bestandsnaam": None,
-    })
-    page.route(SESSIONS_ROUTE, lambda route: route.fulfill(
-        status=200, content_type="application/json", body='{"sessions": ["sessie-zonder-bijlage"]}',
-    ))
-    page.route(SESSION_ITEM_ROUTE, lambda route: route.fulfill(
-        status=200, content_type="application/json", body=sessie_data,
-    ))
-    page.reload()
-    page.locator("[data-testid=session-select]").select_option("sessie-zonder-bijlage")
+    }
+    stub_sessies_met_doorgang(app.page, ["sessie-zonder-bijlage"])
+    stub_sessie_item(app.page, "sessie-zonder-bijlage", sessie_data)
+    app.reload()
+    app.sidebar.selecteer_via_dropdown("sessie-zonder-bijlage")
 
-    tekst = page.locator("[data-testid=bijlage-status]").inner_text()
-    assert "Geen bijlage" in tekst, f"'Geen bijlage' ontbreekt na laden sessie zonder bijlage: {tekst!r}"
+    app.expect_bijlage_status_bevat("Geen bijlage")
 
 
-def test_sessie_laden_zonder_bijlage_veld_geeft_geen_fout(page: Page):
+def test_sessie_laden_zonder_bijlage_veld_geeft_geen_fout(app: PromptPage):
     """Testcode: bestand_import.interactie.09
     Dekt: IMPORT-I-05 — bestaande sessies zonder 'bijlage_bestandsnaam' kunnen worden geladen zonder foutmelding.
     """
-    sessie_data = json.dumps({
+    sessie_data = {
         "name": "oud-sessie", "provider": "ollama",
         "rol": "tester", "taak": "testen", "doel": "kwaliteit bewaken",
-    })
-    page.route(SESSIONS_ROUTE, lambda route: route.fulfill(
-        status=200, content_type="application/json", body='{"sessions": ["oud-sessie"]}',
-    ))
-    page.route(SESSION_ITEM_ROUTE, lambda route: route.fulfill(
-        status=200, content_type="application/json", body=sessie_data,
-    ))
-    page.reload()
-    page.locator("[data-testid=session-select]").select_option("oud-sessie")
+    }
+    stub_sessies_met_doorgang(app.page, ["oud-sessie"])
+    stub_sessie_item(app.page, "oud-sessie", sessie_data)
+    app.reload()
+    app.sidebar.selecteer_via_dropdown("oud-sessie")
 
-    expect(page.locator("[data-testid=error]")).not_to_be_visible()
+    app.expect_error_niet_zichtbaar()

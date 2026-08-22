@@ -11,65 +11,63 @@ import pytest
 from playwright.sync_api import Page, expect
 
 from tests.conftest import BASE_URL
-
-SESSIONS_ROUTE = "**/api/sessions"
+from tests.playwright.mocks import stub_lege_sessies
+from tests.playwright.pages.prompt_page import PromptPage
 
 
 @pytest.fixture(autouse=True)
-def go_to_app(page: Page):
-    page.route(SESSIONS_ROUTE, lambda route: route.fulfill(
-        status=200, content_type="application/json", body='{"sessions": []}',
-    ))
-    page.goto(BASE_URL)
+def app(page: Page) -> PromptPage:
+    stub_lege_sessies(page)
+    pagina = PromptPage(page)
+    pagina.open(BASE_URL)
+    return pagina
 
 
 # ---------------------------------------------------------------------------
 # IMPORT-W-01 — bestandskiezer-knop
 # ---------------------------------------------------------------------------
 
-def test_bijlage_knop_is_zichtbaar(page: Page):
+def test_bijlage_knop_is_zichtbaar(app: PromptPage):
     """Testcode: bestand_import.weergave.01
     Dekt: IMPORT-W-01 — de UI toont een bestandskiezer-knop voor het selecteren van een bijlage.
     """
-    expect(page.locator("[data-testid=bijlage-input]")).to_be_attached()
+    expect(app.bijlage_input).to_be_attached()
 
 
 # ---------------------------------------------------------------------------
 # IMPORT-W-02 — bestandsnaam of "Geen bijlage"
 # ---------------------------------------------------------------------------
 
-def test_bijlage_label_toont_geen_bijlage_als_standaard(page: Page):
+def test_bijlage_label_toont_geen_bijlage_als_standaard(app: PromptPage):
     """Testcode: bestand_import.weergave.02
     Dekt: IMPORT-W-02 — zonder geselecteerde bijlage toont de UI 'Geen bijlage'.
     """
-    tekst = page.locator("[data-testid=bijlage-status]").inner_text()
-    assert "Geen bijlage" in tekst, f"Standaard bijlagestatus klopt niet: {tekst!r}"
+    app.expect_bijlage_status_bevat("Geen bijlage")
 
 
-def test_geselecteerd_bestand_toont_bestandsnaam(page: Page, tmp_path):
+def test_geselecteerd_bestand_toont_bestandsnaam(app: PromptPage, tmp_path):
     """Testcode: bestand_import.weergave.03
     Dekt: IMPORT-W-02 — na het selecteren van een bestand toont de UI de bestandsnaam.
     """
     testbestand = tmp_path / "mijn_notities.txt"
     testbestand.write_text("inhoud van notities", encoding="utf-8")
 
-    page.locator("[data-testid=bijlage-input]").set_input_files(str(testbestand))
+    app.upload_bijlage(str(testbestand))
 
-    tekst = page.locator("[data-testid=bijlage-status]").inner_text()
-    assert "mijn_notities.txt" in tekst, f"Bestandsnaam ontbreekt in status: {tekst!r}"
+    app.expect_bijlage_status_bevat("mijn_notities.txt")
 
 
 # ---------------------------------------------------------------------------
 # IMPORT-W-03 — verwijderknop zichtbaar na selectie
 # ---------------------------------------------------------------------------
 
-def test_verwijderknop_is_zichtbaar_na_selectie(page: Page, tmp_path):
+def test_verwijderknop_is_zichtbaar_na_selectie(app: PromptPage, tmp_path):
     """Testcode: bestand_import.weergave.04
     Dekt: IMPORT-W-03 — na het selecteren van een bestand is de ×-verwijderknop zichtbaar.
     """
     testbestand = tmp_path / "notities.txt"
     testbestand.write_text("inhoud", encoding="utf-8")
 
-    page.locator("[data-testid=bijlage-input]").set_input_files(str(testbestand))
+    app.upload_bijlage(str(testbestand))
 
-    expect(page.locator("[data-testid=bijlage-verwijder]")).to_be_visible()
+    app.expect_bijlage_verwijder_knop_zichtbaar()

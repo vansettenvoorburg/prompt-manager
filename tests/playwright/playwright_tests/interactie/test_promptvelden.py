@@ -15,26 +15,21 @@ import pytest
 from playwright.sync_api import Page
 
 from tests.conftest import BASE_URL
-
-PROMPT_ROUTE = "**/api/prompt"
+from tests.playwright.pages.prompt_page import PromptPage
 
 
 @pytest.fixture(autouse=True)
-def go_to_app(page: Page):
-    page.goto(BASE_URL)
-
-
-def _vul_verplichte_velden(page: Page):
-    waarden = {"rol": "senior developer", "taak": "een API ontwerpen", "doel": "data op te slaan"}
-    for veld, waarde in waarden.items():
-        page.locator(f"[name={veld}]").fill(waarde)
+def app(page: Page) -> PromptPage:
+    pagina = PromptPage(page)
+    pagina.open(BASE_URL)
+    return pagina
 
 
 # ---------------------------------------------------------------------------
 # PROMPTVELDEN-I-01 — velden bereiken de backend-aanvraag
 # ---------------------------------------------------------------------------
 
-def test_optionele_velden_worden_meegestuurd_in_api_call(page: Page):
+def test_optionele_velden_worden_meegestuurd_in_api_call(app: PromptPage):
     """Testcode: promptvelden.interactie.01
     Dekt: PROMPTVELDEN-I-01 — een ingevuld optioneel veld staat in het verstuurde JSON-body.
     """
@@ -48,12 +43,12 @@ def test_optionele_velden_worden_meegestuurd_in_api_call(page: Page):
             body='{"runs": [{"run_nummer": 1, "temperature": 0.8, "response": "ok"}]}',
         )
 
-    page.route(PROMPT_ROUTE, inspect_route)
-    _vul_verplichte_velden(page)
-    page.locator("[name=formaat]").fill("markdown")
-    page.get_by_role("button", name="Verstuur").click()
+    app.page.route("**/api/prompt", inspect_route)
+    app.vul_verplichte_velden()
+    app.fill_veld("formaat", "markdown")
+    app.verstuur()
 
-    page.wait_for_selector("[data-testid=run-results]")
+    app.page.wait_for_selector("[data-testid=run-results]")
     assert captured_body.get("formaat") == "markdown"
 
 
@@ -61,28 +56,28 @@ def test_optionele_velden_worden_meegestuurd_in_api_call(page: Page):
 # PROMPTVELDEN-I-03 — newlines worden geaccepteerd
 # ---------------------------------------------------------------------------
 
-def test_taak_accepteert_newlines(page: Page):
+def test_taak_accepteert_newlines(app: PromptPage):
     """Testcode: promptvelden.interactie.02
     Dekt: PROMPTVELDEN-I-03 — het `taak`-veld accepteert newlines (Enter-toets).
     """
-    page.locator("[name=taak]").fill("regel 1\nregel 2")
-    waarde = page.locator("[name=taak]").input_value()
+    app.fill_veld("taak", "regel 1\nregel 2")
+    waarde = app.taak_input.input_value()
     assert "\n" in waarde, f"Newline ontbreekt in 'taak': {waarde!r}"
 
 
-def test_doel_accepteert_newlines(page: Page):
+def test_doel_accepteert_newlines(app: PromptPage):
     """Testcode: promptvelden.interactie.03
     Dekt: PROMPTVELDEN-I-03 — het `doel`-veld accepteert newlines (Enter-toets).
     """
-    page.locator("[name=doel]").fill("doel A\ndoel B")
-    waarde = page.locator("[name=doel]").input_value()
+    app.fill_veld("doel", "doel A\ndoel B")
+    waarde = app.doel_input.input_value()
     assert "\n" in waarde, f"Newline ontbreekt in 'doel': {waarde!r}"
 
 
-def test_formaat_accepteert_newlines(page: Page):
+def test_formaat_accepteert_newlines(app: PromptPage):
     """Testcode: promptvelden.interactie.04
     Dekt: PROMPTVELDEN-I-03 — het `formaat`-veld accepteert newlines (Enter-toets).
     """
-    page.locator("[name=formaat]").fill("JSON\nmarkdown")
-    waarde = page.locator("[name=formaat]").input_value()
+    app.fill_veld("formaat", "JSON\nmarkdown")
+    waarde = app.formaat_input.input_value()
     assert "\n" in waarde, f"Newline ontbreekt in 'formaat': {waarde!r}"

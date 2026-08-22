@@ -26,8 +26,9 @@ _CLIPBOARD_INIT_SCRIPT = """
 
 
 def _is_playwright_test(fspath) -> bool:
-    """Playwright/frontend-tests staan in tests/playwright/ (incl. de weergave/,
-    interactie/ en validatie/ submappen uit documentatie/testdekking.md)."""
+    """Playwright/frontend-tests staan in tests/playwright/ (incl. de
+    playwright_tests/-submap met weergave/, interactie/ en validatie/ uit
+    documentatie/testdekking.md)."""
     parts = {p.lower() for p in str(fspath).replace("\\", "/").split("/")}
     return "playwright" in parts
 

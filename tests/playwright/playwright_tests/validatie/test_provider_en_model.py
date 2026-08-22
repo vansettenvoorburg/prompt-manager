@@ -8,79 +8,74 @@ Testcodes volgen het formaat <bestand>.<categorie>.<volgnummer>, bijv.
 provider_en_model.validatie.01 — bewust een ander formaat dan de AC-codes (PROVIDER-V-01).
 """
 import pytest
-from playwright.sync_api import Page, expect
+from playwright.sync_api import Page
 
 from tests.conftest import BASE_URL
-
-PROMPT_ROUTE = "**/api/prompt"
+from tests.playwright.pages.prompt_page import PromptPage
 
 
 @pytest.fixture(autouse=True)
-def go_to_app(page: Page):
-    page.goto(BASE_URL)
-
-
-def _vul_verplichte_velden(page: Page):
-    page.locator("[name=rol]").fill("Python developer")
-    page.locator("[name=taak]").fill("een API bouwen")
-    page.locator("[name=doel]").fill("data te verwerken")
+def app(page: Page) -> PromptPage:
+    pagina = PromptPage(page)
+    pagina.open(BASE_URL)
+    return pagina
 
 
 # ---------------------------------------------------------------------------
 # PROVIDER-V-01 — Ollama niet bereikbaar
 # ---------------------------------------------------------------------------
 
-def test_ollama_fout_toont_foutmelding(page: Page):
+def test_ollama_fout_toont_foutmelding(app: PromptPage):
     """Testcode: provider_en_model.validatie.01
     Dekt: PROVIDER-V-01 — als Ollama niet bereikbaar is (503), toont de UI een foutmelding.
     """
-    page.route(
-        PROMPT_ROUTE,
+    app.page.route(
+        "**/api/prompt",
         lambda route: route.fulfill(
             status=503,
             content_type="application/json",
             body='{"detail": "Ollama is niet bereikbaar"}',
         ),
     )
-    _vul_verplichte_velden(page)
-    page.get_by_role("button", name="Verstuur").click()
+    app.vul_verplichte_velden()
+    app.verstuur()
 
-    expect(page.locator("[data-testid=error]")).to_be_visible()
-    expect(page.locator("[data-testid=error]")).not_to_be_empty()
+    app.expect_error_zichtbaar()
+    app.expect_error_niet_leeg()
 
 
 # ---------------------------------------------------------------------------
 # PROVIDER-V-02 — Groq niet bereikbaar / fout / ontbrekende key
 # ---------------------------------------------------------------------------
 
-def test_groq_fout_toont_foutmelding(page: Page):
+def test_groq_fout_toont_foutmelding(app: PromptPage):
     """Testcode: provider_en_model.validatie.02
     Dekt: PROVIDER-V-02 — als de Groq API een fout retourneert (503), toont de UI een foutmelding.
     """
-    page.route(PROMPT_ROUTE, lambda route: route.fulfill(
+    app.page.route("**/api/prompt", lambda route: route.fulfill(
         status=503,
         content_type="application/json",
         body='{"detail": "Groq niet bereikbaar"}',
     ))
-    page.locator("[data-testid=provider-select]").select_option("groq")
-    _vul_verplichte_velden(page)
-    page.get_by_role("button", name="Verstuur").click()
+    app.kies_provider("groq")
+    app.vul_verplichte_velden()
+    app.verstuur()
 
-    expect(page.locator("[data-testid=error]")).to_be_visible()
+    app.expect_error_zichtbaar()
 
 
-def test_groq_fout_geen_stille_mislukking(page: Page):
+def test_groq_fout_geen_stille_mislukking(app: PromptPage):
     """Testcode: provider_en_model.validatie.03
     Dekt: PROVIDER-V-02 — een Groq-fout resulteert in een zichtbare melding, niet in een lege response-sectie.
     """
-    page.route(PROMPT_ROUTE, lambda route: route.fulfill(
+    app.page.route("**/api/prompt", lambda route: route.fulfill(
         status=503,
         content_type="application/json",
         body='{"detail": "Groq niet bereikbaar"}',
     ))
-    page.locator("[data-testid=provider-select]").select_option("groq")
-    _vul_verplichte_velden(page)
-    page.get_by_role("button", name="Verstuur").click()
+    app.kies_provider("groq")
+    app.vul_verplichte_velden()
+    app.verstuur()
 
-    expect(page.locator("[data-testid=response]")).not_to_contain_text("Groq niet bereikbaar")
-    expect(page.locator("[data-testid=error]")).to_be_visible()
+    app.expect_response_bevat_niet("Groq niet bereikbaar")
+    app.expect_error_zichtbaar()

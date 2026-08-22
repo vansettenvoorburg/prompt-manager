@@ -8,54 +8,45 @@ Testcodes volgen het formaat <bestand>.<categorie>.<volgnummer>, bijv.
 sessiebeheer.validatie.01 — bewust een ander formaat dan de AC-codes (SESSIE-V-01).
 """
 import pytest
-from playwright.sync_api import Page, expect
+from playwright.sync_api import Page
 
 from tests.conftest import BASE_URL
-
-SESSIONS_ROUTE = "**/api/sessions"
+from tests.playwright.mocks import SESSIONS_ROUTE, stub_sessies_met_doorgang
+from tests.playwright.pages.prompt_page import PromptPage
 
 
 @pytest.fixture(autouse=True)
-def go_to_app(page: Page):
-    def handle_sessions_lijst(route):
-        is_lijst = route.request.method == "GET" and "/api/sessions/" not in route.request.url
-        if is_lijst:
-            route.fulfill(status=200, content_type="application/json", body='{"sessions": []}')
-        else:
-            route.continue_()
-
-    page.route(SESSIONS_ROUTE, handle_sessions_lijst)
-    page.goto(BASE_URL)
+def app(page: Page) -> PromptPage:
+    stub_sessies_met_doorgang(page)
+    pagina = PromptPage(page)
+    pagina.open(BASE_URL)
+    return pagina
 
 
-def _vul_formulier(page: Page, naam: str = "mijn-sessie"):
-    page.locator("[name=rol]").fill("Python developer")
-    page.locator("[name=taak]").fill("een API bouwen")
-    page.locator("[name=doel]").fill("data te verwerken")
-    page.locator("[name=session-name]").fill(naam)
+def _vul_formulier(app: PromptPage, naam: str = "mijn-sessie") -> None:
+    app.vul_verplichte_velden()
+    app.sidebar.fill_naam(naam)
 
 
 # ---------------------------------------------------------------------------
 # SESSIE-V-01 — lege sessienaam
 # ---------------------------------------------------------------------------
 
-def test_lege_sessienaam_toont_validatiemelding(page: Page):
+def test_lege_sessienaam_toont_validatiemelding(app: PromptPage):
     """Testcode: sessiebeheer.validatie.01
     Dekt: SESSIE-V-01 — opslaan met lege sessienaam toont een validatiemelding; er wordt geen API-call gedaan.
     """
     calls = []
-    page.route(SESSIONS_ROUTE, lambda route: (
+    app.page.route(SESSIONS_ROUTE, lambda route: (
         calls.append(route) or route.abort()
         if route.request.method == "POST"
         else route.fulfill(status=200, content_type="application/json", body='{"sessions": []}')
     ))
 
-    page.locator("[name=rol]").fill("Python developer")
-    page.locator("[name=taak]").fill("een API bouwen")
-    page.locator("[name=doel]").fill("data te verwerken")
-    page.get_by_role("button", name="Opslaan").click()
+    app.vul_verplichte_velden()
+    app.sidebar.opslaan()
 
-    expect(page.locator("[data-testid=validation-session-name]")).to_be_visible()
+    app.sidebar.expect_validatie_naam_zichtbaar()
     assert len(calls) == 0, "Er mag geen POST zijn gedaan bij een lege sessienaam"
 
 
@@ -63,24 +54,24 @@ def test_lege_sessienaam_toont_validatiemelding(page: Page):
 # SESSIE-V-02 — bestaande naam: overschrijf-bevestiging
 # ---------------------------------------------------------------------------
 
-def test_bestaande_naam_toont_bevestigingsdialoog(page: Page):
+def test_bestaande_naam_toont_bevestigingsdialoog(app: PromptPage):
     """Testcode: sessiebeheer.validatie.02
     Dekt: SESSIE-V-02 — als de sessienaam al bestaat (409), verschijnt een bevestigingsdialoog.
     """
-    page.route(SESSIONS_ROUTE, lambda route: route.fulfill(
+    app.page.route(SESSIONS_ROUTE, lambda route: route.fulfill(
         status=409, content_type="application/json",
         body='{"detail": "Sessie bestaat al"}',
     ) if route.request.method == "POST" else route.fulfill(
         status=200, content_type="application/json", body='{"sessions": []}',
     ))
 
-    _vul_formulier(page, naam="bestaand")
-    page.get_by_role("button", name="Opslaan").click()
+    _vul_formulier(app, naam="bestaand")
+    app.sidebar.opslaan()
 
-    expect(page.locator("[data-testid=overwrite-dialog]")).to_be_visible()
+    app.sidebar.expect_overschrijf_dialoog_zichtbaar()
 
 
-def test_annuleren_bij_overschrijven_doet_niets(page: Page):
+def test_annuleren_bij_overschrijven_doet_niets(app: PromptPage):
     """Testcode: sessiebeheer.validatie.03
     Dekt: SESSIE-V-02 — annuleren in de bevestigingsdialoog doet niets; de sessie wordt niet overschreven.
     """
@@ -96,15 +87,15 @@ def test_annuleren_bij_overschrijven_doet_niets(page: Page):
         else:
             route.fulfill(status=200, content_type="application/json", body='{"sessions": []}')
 
-    page.route(SESSIONS_ROUTE, handle_route)
+    app.page.route(SESSIONS_ROUTE, handle_route)
 
-    _vul_formulier(page, naam="bestaand")
-    page.get_by_role("button", name="Opslaan").click()
+    _vul_formulier(app, naam="bestaand")
+    app.sidebar.opslaan()
 
-    expect(page.locator("[data-testid=overwrite-dialog]")).to_be_visible()
-    page.get_by_role("button", name="Annuleren").click()
+    app.sidebar.expect_overschrijf_dialoog_zichtbaar()
+    app.sidebar.annuleer_overschrijven()
 
-    expect(page.locator("[data-testid=overwrite-dialog]")).not_to_be_visible()
+    app.sidebar.expect_overschrijf_dialoog_niet_zichtbaar()
     force_calls = [c for c in post_calls if c and '"force": true' in c]
     assert len(force_calls) == 0, "Na annuleren mag geen force-opslaan zijn gedaan"
 
@@ -113,42 +104,38 @@ def test_annuleren_bij_overschrijven_doet_niets(page: Page):
 # SESSIE-V-03 — opslaan mislukt
 # ---------------------------------------------------------------------------
 
-def test_opslaan_mislukt_toont_foutmelding(page: Page):
+def test_opslaan_mislukt_toont_foutmelding(app: PromptPage):
     """Testcode: sessiebeheer.validatie.04
     Dekt: SESSIE-V-03 — als opslaan mislukt (500), verschijnt een foutmelding.
     """
-    page.route(SESSIONS_ROUTE, lambda route: route.fulfill(
+    app.page.route(SESSIONS_ROUTE, lambda route: route.fulfill(
         status=500, content_type="application/json",
         body='{"detail": "Schrijffout"}',
     ) if route.request.method == "POST" else route.fulfill(
         status=200, content_type="application/json", body='{"sessions": []}',
     ))
 
-    _vul_formulier(page, naam="test")
-    page.get_by_role("button", name="Opslaan").click()
+    _vul_formulier(app, naam="test")
+    app.sidebar.opslaan()
 
-    expect(page.locator("[data-testid=save-error]")).to_be_visible()
+    app.sidebar.expect_opslaan_fout_zichtbaar()
 
 
 # ---------------------------------------------------------------------------
 # SESSIE-V-04 — laden mislukt
 # ---------------------------------------------------------------------------
 
-def test_laden_mislukt_toont_foutmelding(page: Page):
+def test_laden_mislukt_toont_foutmelding(app: PromptPage):
     """Testcode: sessiebeheer.validatie.05
     Dekt: SESSIE-V-04 — als laden mislukt (500), verschijnt een foutmelding.
     """
-    page.unroute(SESSIONS_ROUTE)
-    page.route("**/api/sessions", lambda route: route.fulfill(
-        status=200, content_type="application/json",
-        body='{"sessions": ["kapot"]}',
-    ) if not route.request.url.endswith("/kapot") else route.continue_())
-    page.route("**/api/sessions/kapot", lambda route: route.fulfill(
+    stub_sessies_met_doorgang(app.page, ["kapot"])
+    app.page.route("**/api/sessions/kapot", lambda route: route.fulfill(
         status=500, content_type="application/json",
         body='{"detail": "Ongeldig JSON"}',
     ))
-    page.reload()
+    app.reload()
 
-    page.locator("[data-testid=sessions-list]").get_by_text("kapot").click()
+    app.sidebar.selecteer_via_lijst("kapot")
 
-    expect(page.locator("[data-testid=load-error]")).to_be_visible()
+    app.sidebar.expect_laadfout_zichtbaar()

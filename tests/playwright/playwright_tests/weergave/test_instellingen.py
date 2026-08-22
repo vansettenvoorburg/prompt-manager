@@ -11,93 +11,81 @@ import pytest
 from playwright.sync_api import Page, expect
 
 from tests.conftest import BASE_URL
-
-SESSIONS_ROUTE = "**/api/sessions"
-SETTINGS_ROUTE = "**/api/settings"
-
-_STUB_SETTINGS = '{"groq_rpm": 30, "google_rpm": 15}'
-
-
-def _stub_settings(route):
-    if route.request.method == "GET":
-        route.fulfill(status=200, content_type="application/json", body=_STUB_SETTINGS)
-    else:
-        route.fulfill(status=200, content_type="application/json", body='{"status": "ok"}')
+from tests.playwright.mocks import stub_lege_sessies, stub_settings
+from tests.playwright.pages.prompt_page import PromptPage
 
 
 @pytest.fixture(autouse=True)
-def go_to_app(page: Page):
-    page.route(SESSIONS_ROUTE, lambda route: route.fulfill(
-        status=200, content_type="application/json", body='{"sessions": []}',
-    ))
-    page.route(SETTINGS_ROUTE, _stub_settings)
-    page.goto(BASE_URL)
+def app(page: Page) -> PromptPage:
+    stub_lege_sessies(page)
+    stub_settings(page)
+    pagina = PromptPage(page)
+    pagina.open(BASE_URL)
+    return pagina
 
 
 # ---------------------------------------------------------------------------
 # INSTELLINGEN-W-01 — tab aanwezig en opent paneel
 # ---------------------------------------------------------------------------
 
-def test_instellingen_tab_is_aanwezig(page: Page):
+def test_instellingen_tab_is_aanwezig(app: PromptPage):
     """Testcode: instellingen.weergave.01
     Dekt: INSTELLINGEN-W-01 — er is een 'Instellingen'-tab in de navigatie.
     """
-    expect(page.locator("[data-testid=tab-instellingen]")).to_be_visible()
+    expect(app.tab_instellingen).to_be_visible()
 
 
-def test_instellingen_tab_opent_paneel(page: Page):
+def test_instellingen_tab_opent_paneel(app: PromptPage):
     """Testcode: instellingen.weergave.02
     Dekt: INSTELLINGEN-W-01 — na klikken op de Instellingen-tab is het instellingenpaneel zichtbaar.
     """
-    page.locator("[data-testid=tab-instellingen]").click()
-    expect(page.locator("[data-testid=instellingen-paneel]")).to_be_visible()
+    app.open_tab_instellingen()
+    app.instellingen.expect_zichtbaar()
 
 
 # ---------------------------------------------------------------------------
 # INSTELLINGEN-W-02 — RPM-velden per provider
 # ---------------------------------------------------------------------------
 
-def test_groq_rpm_veld_is_aanwezig(page: Page):
+def test_groq_rpm_veld_is_aanwezig(app: PromptPage):
     """Testcode: instellingen.weergave.03
     Dekt: INSTELLINGEN-W-02 — het Groq RPM-invoerveld is aanwezig in de Instellingen-tab.
     """
-    page.locator("[data-testid=tab-instellingen]").click()
-    expect(page.locator("[data-testid=groq-rpm-input]")).to_be_visible()
+    app.open_tab_instellingen()
+    app.instellingen.expect_groq_rpm_veld_zichtbaar()
 
 
-def test_google_rpm_veld_is_aanwezig(page: Page):
+def test_google_rpm_veld_is_aanwezig(app: PromptPage):
     """Testcode: instellingen.weergave.04
     Dekt: INSTELLINGEN-W-02 — het Google RPM-invoerveld is aanwezig in de Instellingen-tab.
     """
-    page.locator("[data-testid=tab-instellingen]").click()
-    expect(page.locator("[data-testid=google-rpm-input]")).to_be_visible()
+    app.open_tab_instellingen()
+    app.instellingen.expect_google_rpm_veld_zichtbaar()
 
 
-def test_ollama_rpm_veld_is_niet_aanwezig(page: Page):
+def test_ollama_rpm_veld_is_niet_aanwezig(app: PromptPage):
     """Testcode: instellingen.weergave.05
     Dekt: INSTELLINGEN-W-02 — er is geen Ollama RPM-veld in de Instellingen-tab.
     """
-    page.locator("[data-testid=tab-instellingen]").click()
-    expect(page.locator("[data-testid=ollama-rpm-input]")).not_to_be_attached()
+    app.open_tab_instellingen()
+    app.instellingen.expect_ollama_rpm_veld_niet_aanwezig()
 
 
 # ---------------------------------------------------------------------------
 # INSTELLINGEN-W-03 — velden tonen de opgehaalde waarde
 # ---------------------------------------------------------------------------
 
-def test_groq_rpm_toont_geladen_waarde(page: Page):
+def test_groq_rpm_toont_geladen_waarde(app: PromptPage):
     """Testcode: instellingen.weergave.06
     Dekt: INSTELLINGEN-W-03 — het Groq RPM-veld toont de waarde die via GET /api/settings is opgehaald.
     """
-    page.locator("[data-testid=tab-instellingen]").click()
-    waarde = page.locator("[data-testid=groq-rpm-input]").input_value()
-    assert waarde == "30", f"Verwacht '30' als Groq RPM, maar kreeg {waarde!r}"
+    app.open_tab_instellingen()
+    app.instellingen.expect_groq_rpm_waarde("30")
 
 
-def test_google_rpm_toont_geladen_waarde(page: Page):
+def test_google_rpm_toont_geladen_waarde(app: PromptPage):
     """Testcode: instellingen.weergave.07
     Dekt: INSTELLINGEN-W-03 — het Google RPM-veld toont de waarde die via GET /api/settings is opgehaald.
     """
-    page.locator("[data-testid=tab-instellingen]").click()
-    waarde = page.locator("[data-testid=google-rpm-input]").input_value()
-    assert waarde == "15", f"Verwacht '15' als Google RPM, maar kreeg {waarde!r}"
+    app.open_tab_instellingen()
+    app.instellingen.expect_google_rpm_waarde("15")

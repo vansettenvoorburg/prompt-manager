@@ -132,3 +132,44 @@ In de geïnstalleerde Playwright-versie (`playwright-0.7.2`) is `post_data_json`
 
 - De story 01 backend-tests (`test_backend.py`) testten het oude `{"prompt": "..."}` formaat dat door story 02 is vervangen. **2026-05-10 bijgewerkt:** tests en acceptatiecriteria van story 01 zijn aangepast naar het nieuwe acht-velden formaat conform het protocol gewijzigde requirement (implement-skill). De gedragingen voor 503 en laadstatus blijven via achterwaartse compat gedekt.
 - Optionele velden worden in de frontend als lege string verstuurd; de backend laat lege optionele velden weg uit de samengestelde prompt.
+
+## Playwright-testreview (playwright-testing skill) — vervolgstappen
+
+Review van `tests/playwright/` leverde drie punten op; ze worden één voor één in aparte
+sessies opgepakt.
+
+### Afgerond: Page Object Model (2026-08-22)
+
+Nieuw:
+- `tests/playwright/mocks.py` — gedeelde route-stubs en testdata (was per bestand gekopieerd)
+- `tests/playwright/pages/prompt_page.py` — `PromptPage`: formuliervelden, provider/model,
+  runs/temperature, versturen, resultaten
+- `tests/playwright/components/` — `SessionsSidebar`, `SettingsPanel`,
+  `ReviewerList`/`ReviewerItem`
+
+Alle 21 spec-bestanden in `tests/playwright/{interactie,validatie,weergave}/` zijn herschreven
+om deze te gebruiken i.p.v. eigen `_vul_verplichte_velden`, `_kies_groq`, `go_to_app`-boilerplate
+en losse `GROQ_MODEL_DEFAULT`/`_STUB_SETTINGS`-kopieën. Testcodes, AC-verwijzingen en assertions
+zijn ongewijzigd gebleven. Geverifieerd: `python -m pytest tests/playwright/ -q` → **146 passed**.
+
+### Nog open: selectorstrategie
+
+`development/static/index.html` heeft voor elk veld een correct `<label for="...">`
+(rol, taak, doel, provider, groq-model, runs, temperature, …), maar de POM-locators in
+`prompt_page.py` en de componenten wijzen nog naar CSS-attribuutselectors
+(`page.locator("[name=rol]")`, `page.locator("[data-testid=provider-select]")`) i.p.v.
+`page.get_by_label(...)`. Dankzij de POM-refactor hoeft dit nu maar op één plek te worden
+aangepast (de locator-definities), niet meer in 21 bestanden.
+Let op: niet elk element heeft een unieke label-tekst (bijv. `session-select` vs.
+`sessions-list`) — daar blijft `data-testid` een bewuste keuze.
+
+### Nog open: hard wait
+
+`tests/playwright/interactie/test_resultaten_en_kopieren.py`,
+`test_kopieerknop_tekst_keert_terug_na_2_seconden`:
+```python
+app.page.wait_for_timeout(2200)
+expect(knop).to_have_text(originele_tekst)
+```
+`expect(knop).to_have_text(...)` pollt/retryt al zelf — de vaste 2.2s-sleep ervoor is dode
+tijd en fragiel. Fix: verwijder de `wait_for_timeout`-regel.

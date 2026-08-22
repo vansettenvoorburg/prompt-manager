@@ -8,71 +8,62 @@ Testcodes volgen het formaat <bestand>.<categorie>.<volgnummer>, bijv.
 sessiebeheer.weergave.01 — bewust een ander formaat dan de AC-codes (SESSIE-W-01).
 """
 import pytest
-from playwright.sync_api import Page, expect
+from playwright.sync_api import Page
 
 from tests.conftest import BASE_URL
-
-SESSIONS_ROUTE = "**/api/sessions"
+from tests.playwright.mocks import stub_sessies_met_doorgang
+from tests.playwright.pages.prompt_page import PromptPage
 
 
 @pytest.fixture(autouse=True)
-def go_to_app(page: Page):
-    def handle_sessions_lijst(route):
-        is_lijst = route.request.method == "GET" and "/api/sessions/" not in route.request.url
-        if is_lijst:
-            route.fulfill(status=200, content_type="application/json", body='{"sessions": []}')
-        else:
-            route.continue_()
-
-    page.route(SESSIONS_ROUTE, handle_sessions_lijst)
-    page.goto(BASE_URL)
+def app(page: Page) -> PromptPage:
+    stub_sessies_met_doorgang(page)
+    pagina = PromptPage(page)
+    pagina.open(BASE_URL)
+    return pagina
 
 
 # ---------------------------------------------------------------------------
 # SESSIE-W-01 — invoerveld sessienaam en opslaan-knop
 # ---------------------------------------------------------------------------
 
-def test_sessienaam_invoerveld_is_zichtbaar(page: Page):
+def test_sessienaam_invoerveld_is_zichtbaar(app: PromptPage):
     """Testcode: sessiebeheer.weergave.01
     Dekt: SESSIE-W-01 — het invoerveld voor de sessienaam is zichtbaar.
     """
-    expect(page.locator("[name=session-name]")).to_be_visible()
+    app.sidebar.expect_naam_invoerveld_zichtbaar()
 
 
-def test_opslaan_knop_is_zichtbaar(page: Page):
+def test_opslaan_knop_is_zichtbaar(app: PromptPage):
     """Testcode: sessiebeheer.weergave.02
     Dekt: SESSIE-W-01 — de opslaan-knop is zichtbaar.
     """
-    expect(page.get_by_role("button", name="Opslaan")).to_be_visible()
+    app.sidebar.expect_opslaan_knop_zichtbaar()
 
 
 # ---------------------------------------------------------------------------
 # SESSIE-W-02 — sessieslijst, inclusief lege-staat
 # ---------------------------------------------------------------------------
 
-def test_sessieslijst_is_zichtbaar(page: Page):
+def test_sessieslijst_is_zichtbaar(app: PromptPage):
     """Testcode: sessiebeheer.weergave.03
     Dekt: SESSIE-W-02 — de sessieslijst is zichtbaar op de pagina.
     """
-    expect(page.locator("[data-testid=sessions-list]")).to_be_visible()
+    app.sidebar.expect_zichtbaar()
 
 
-def test_lege_sessieslijst_toont_melding(page: Page):
+def test_lege_sessieslijst_toont_melding(app: PromptPage):
     """Testcode: sessiebeheer.weergave.04
     Dekt: SESSIE-W-02 — als er geen sessies zijn, is er een lege-staat melding zichtbaar.
     """
-    expect(page.locator("[data-testid=sessions-empty]")).to_be_visible()
+    app.sidebar.expect_lege_lijst_melding_zichtbaar()
 
 
-def test_sessie_in_lijst_is_zichtbaar_na_ophalen(page: Page):
+def test_sessie_in_lijst_is_zichtbaar_na_ophalen(app: PromptPage):
     """Testcode: sessiebeheer.weergave.05
     Dekt: SESSIE-W-02 — opgeslagen sessies zijn zichtbaar als klikbare items in de lijst.
     """
-    page.unroute(SESSIONS_ROUTE)
-    page.route(SESSIONS_ROUTE, lambda route: route.fulfill(
-        status=200, content_type="application/json",
-        body='{"sessions": ["mijn-sessie"]}',
-    ))
-    page.reload()
+    stub_sessies_met_doorgang(app.page, ["mijn-sessie"])
+    app.reload()
 
-    expect(page.locator("[data-testid=sessions-list]")).to_contain_text("mijn-sessie")
+    app.sidebar.expect_lijst_bevat("mijn-sessie")

@@ -8,37 +8,29 @@ Testcodes volgen het formaat <bestand>.<categorie>.<volgnummer>, bijv.
 instellingen.interactie.01 — bewust een ander formaat dan de AC-codes (INSTELLINGEN-I-01).
 """
 import pytest
-from playwright.sync_api import Page, expect
+from playwright.sync_api import Page
 
 from tests.conftest import BASE_URL
-
-SESSIONS_ROUTE = "**/api/sessions"
-SETTINGS_ROUTE = "**/api/settings"
+from tests.playwright.mocks import SETTINGS_ROUTE, stub_lege_sessies, stub_settings
+from tests.playwright.pages.prompt_page import PromptPage
 
 _STUB_SETTINGS = '{"groq_rpm": 30, "google_rpm": 15}'
 
 
-def _stub_settings(route):
-    if route.request.method == "GET":
-        route.fulfill(status=200, content_type="application/json", body=_STUB_SETTINGS)
-    else:
-        route.fulfill(status=200, content_type="application/json", body='{"status": "ok"}')
-
-
 @pytest.fixture(autouse=True)
-def go_to_app(page: Page):
-    page.route(SESSIONS_ROUTE, lambda route: route.fulfill(
-        status=200, content_type="application/json", body='{"sessions": []}',
-    ))
-    page.route(SETTINGS_ROUTE, _stub_settings)
-    page.goto(BASE_URL)
+def app(page: Page) -> PromptPage:
+    stub_lege_sessies(page)
+    stub_settings(page)
+    pagina = PromptPage(page)
+    pagina.open(BASE_URL)
+    return pagina
 
 
 # ---------------------------------------------------------------------------
 # INSTELLINGEN-I-01 — opslaan verstuurt PUT met de ingevoerde waarden
 # ---------------------------------------------------------------------------
 
-def test_opslaan_verstuurt_put_naar_api_settings(page: Page):
+def test_opslaan_verstuurt_put_naar_api_settings(app: PromptPage):
     """Testcode: instellingen.interactie.01
     Dekt: INSTELLINGEN-I-01 — bij het klikken op 'Instellingen opslaan' wordt PUT /api/settings verstuurd.
     """
@@ -51,16 +43,16 @@ def test_opslaan_verstuurt_put_naar_api_settings(page: Page):
         else:
             route.fulfill(status=200, content_type="application/json", body=_STUB_SETTINGS)
 
-    page.route(SETTINGS_ROUTE, vang_op)
-    page.reload()
-    page.locator("[data-testid=tab-instellingen]").click()
-    page.get_by_role("button", name="Instellingen opslaan").click()
-    expect(page.locator("[data-testid=instellingen-bevestiging]")).to_be_visible()
+    app.page.route(SETTINGS_ROUTE, vang_op)
+    app.reload()
+    app.open_tab_instellingen()
+    app.instellingen.opslaan()
+    app.instellingen.expect_bevestiging_zichtbaar()
 
     assert len(verzoeken) >= 1, "PUT /api/settings werd niet verstuurd"
 
 
-def test_opslaan_stuurt_groq_rpm_waarde_mee(page: Page):
+def test_opslaan_stuurt_groq_rpm_waarde_mee(app: PromptPage):
     """Testcode: instellingen.interactie.02
     Dekt: INSTELLINGEN-I-01 — de ingevoerde Groq RPM-waarde wordt meegestuurd bij het opslaan.
     """
@@ -73,19 +65,19 @@ def test_opslaan_stuurt_groq_rpm_waarde_mee(page: Page):
         else:
             route.fulfill(status=200, content_type="application/json", body=_STUB_SETTINGS)
 
-    page.route(SETTINGS_ROUTE, vang_op)
-    page.reload()
-    page.locator("[data-testid=tab-instellingen]").click()
-    page.locator("[data-testid=groq-rpm-input]").fill("20")
-    page.get_by_role("button", name="Instellingen opslaan").click()
-    expect(page.locator("[data-testid=instellingen-bevestiging]")).to_be_visible()
+    app.page.route(SETTINGS_ROUTE, vang_op)
+    app.reload()
+    app.open_tab_instellingen()
+    app.instellingen.fill_groq_rpm("20")
+    app.instellingen.opslaan()
+    app.instellingen.expect_bevestiging_zichtbaar()
 
     assert vastgelegd.get("groq_rpm") == 20, (
         f"Verwacht groq_rpm=20, maar verzoek bevat: {vastgelegd}"
     )
 
 
-def test_opslaan_stuurt_google_rpm_waarde_mee(page: Page):
+def test_opslaan_stuurt_google_rpm_waarde_mee(app: PromptPage):
     """Testcode: instellingen.interactie.03
     Dekt: INSTELLINGEN-I-01 — de ingevoerde Google RPM-waarde wordt meegestuurd bij het opslaan.
     """
@@ -98,12 +90,12 @@ def test_opslaan_stuurt_google_rpm_waarde_mee(page: Page):
         else:
             route.fulfill(status=200, content_type="application/json", body=_STUB_SETTINGS)
 
-    page.route(SETTINGS_ROUTE, vang_op)
-    page.reload()
-    page.locator("[data-testid=tab-instellingen]").click()
-    page.locator("[data-testid=google-rpm-input]").fill("10")
-    page.get_by_role("button", name="Instellingen opslaan").click()
-    expect(page.locator("[data-testid=instellingen-bevestiging]")).to_be_visible()
+    app.page.route(SETTINGS_ROUTE, vang_op)
+    app.reload()
+    app.open_tab_instellingen()
+    app.instellingen.fill_google_rpm("10")
+    app.instellingen.opslaan()
+    app.instellingen.expect_bevestiging_zichtbaar()
 
     assert vastgelegd.get("google_rpm") == 10, (
         f"Verwacht google_rpm=10, maar verzoek bevat: {vastgelegd}"
