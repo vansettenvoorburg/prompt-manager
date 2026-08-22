@@ -73,6 +73,9 @@ class PromptPage:
     def fill_veld(self, veld: str, waarde: str) -> None:
         self._veld_inputs[veld].fill(waarde)
 
+    def veld_locator(self, veld: str):
+        return self._veld_inputs[veld]
+
     def vul_verplichte_velden(
         self,
         *,

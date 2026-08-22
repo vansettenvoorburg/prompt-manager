@@ -1,6 +1,6 @@
 - Voor elk component op het scherm maak een nieuw ACC bestand aan
 - Binnen dit bestand: maak een indeling in weergave, interactie, validatie
 - Er is een apart bestand voor bestand import en een apart bestand voor bestand export
-- Plaats elk criterium dat zo niet ingedeeld is, in de map Algemeen. Houdt voor deze  map ook indeling weergave, inteeratie, validatie aan
+- Plaats elk criterium dat zo niet ingedeeld is, in de map Algemeen. Houdt voor deze  map ook indeling weergave, interactie, validatie aan
 - Geef elk criterium een logische, unieke code
-- Een story zonder schermgedrag (bv. testinfrastructuur, documentatie) valt buiten deze indeling — die blijft als volledig story-bestand bewaard in plaats van opgesplitst te worden (voorbeeld: story 13)
+- Een story zonder schermgedrag (bv. testinfrastructuur, refactors, documentatie) valt buiten deze indeling — die krijgt een eigen bestand in `documentatie/acceptatiecriteria/` in plaats van te worden opgesplitst. Zodra alle criteria zijn afgevinkt, wordt dat bestand net als bij een gewone story verwijderd (zie `pr-cleanup-review-SKILL.md`); de geschiedenis blijft dan terug te vinden via `notes.md` en de commits, niet via een bewaard bestand op naam.

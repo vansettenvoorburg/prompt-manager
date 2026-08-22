@@ -61,8 +61,7 @@ def test_elk_veld_heeft_een_placeholder(app: PromptPage):
     Dekt: PROMPTVELDEN-W-02 — elk veld heeft een niet-lege placeholder als invulhulp.
     """
     for veld in ALLE_VELDEN:
-        locator = app.page.locator(f"[name={veld}]")
-        placeholder = locator.get_attribute("placeholder")
+        placeholder = app.veld_locator(veld).get_attribute("placeholder")
         assert placeholder, f"Veld '{veld}' heeft geen placeholder"
 
 

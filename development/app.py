@@ -200,7 +200,8 @@ def _schrijf_logbestand(
     datum_tijd_formaat = "%Y-%m-%d_%H-%M-%S-%f" if met_microseconden else "%Y-%m-%d_%H-%M-%S"
     datum_tijd = start.strftime(datum_tijd_formaat)
     model_gesaneerd = _saneer_voor_bestandsnaam(model)
-    bestandsnaam = f"{datum_tijd}_{provider}_{model_gesaneerd}_{sessie}_{naamsuffix}.json"
+    sessie_gesaneerd = _saneer_voor_bestandsnaam(sessie)
+    bestandsnaam = f"{datum_tijd}_{provider}_{model_gesaneerd}_{sessie_gesaneerd}_{naamsuffix}.json"
     try:
         LOGS_DIR.mkdir(parents=True, exist_ok=True)
     except OSError as exc:

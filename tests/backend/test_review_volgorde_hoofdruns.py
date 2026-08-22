@@ -1,5 +1,5 @@
 """
-Test voor AC in documentatie/acceptatiecriteria/08-review-iteratief.md (Uitvoervolgorde bij meerdere hoofdruns):
+Test voor AC in documentatie/acceptatiecriteria/review-pipeline.md (Uitvoervolgorde bij meerdere hoofdruns):
 elke hoofdrun doorloopt eerst zijn volledige reviewketen voordat de volgende hoofdrun start.
 """
 from unittest.mock import patch, AsyncMock
