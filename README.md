@@ -48,7 +48,7 @@ Open `.env` en vul eventueel je eigen waarden in:
 ## App starten
 
 ```
-python app.py
+python development/app.py
 ```
 
 Open daarna `http://localhost:3000` in je browser.
@@ -85,14 +85,25 @@ Draai de suite altijd per categorie — een enkele ongefilterde `pytest`-aanroep
 Playwright's sync API met async tests in dezelfde sessie, wat een
 `RuntimeError: Cannot run the event loop while another loop is running` kan veroorzaken.
 
-Backend- en integratietests (async, geen browser):
+De tests staan in drie mappen, elk met een eigen commando:
+
+Playwright-tests (browser):
 
 ```
-pytest -m "not frontend"
+pytest tests/playwright
 ```
 
-Frontend-tests (Playwright, browser):
+Integratietests (async, via een draaiende server op de testpoort):
 
 ```
-pytest -m frontend
+pytest tests/integratie
 ```
+
+Backendtests (async, in-process testclient):
+
+```
+pytest tests/backend
+```
+
+Zie `documentatie/testdekking.md` voor het overzicht van welk browserscenario door welke
+Playwright-test gedekt wordt.
