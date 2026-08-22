@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Prompt Sessie Manager</title>
+  <link rel="stylesheet" href="/style.css?v=2">
+</head>
+<body>
+  <div class="layout">
+
+    <aside class="sidebar">
+      <section>
+        <h2>Sessie opslaan</h2>
+        <div class="veld">
+          <label for="session-name">Sessienaam</label>
+          <input type="text" id="session-name" name="session-name" placeholder="mijn-sessie">
+          <p data-testid="validation-session-name" class="validatie hidden">Vul een sessienaam in.</p>
+        </div>
+        <button type="button" id="opslaan-knop">Opslaan</button>
+
+        <p data-testid="save-confirmation" class="hidden"></p>
+        <p data-testid="save-error" class="hidden"></p>
+
+        <div data-testid="overwrite-dialog" class="hidden">
+          <p>Er bestaat al een sessie met deze naam. Wilt u overschrijven?</p>
+          <button type="button" id="bevestig-overschrijven">Ja, overschrijven</button>
+          <button type="button" id="annuleer-overschrijven">Annuleren</button>
+        </div>
+
+        <h2 class="sessies-kop">Opgeslagen sessies</h2>
+        <select data-testid="session-select">
+          <option value="">-- Kies een sessie --</option>
+        </select>
+        <div data-testid="sessions-list">
+          <p data-testid="sessions-empty">Nog geen sessies opgeslagen.</p>
+        </div>
+        <p data-testid="load-error" class="hidden"></p>
+      </section>
+    </aside>
+
+    <main>
+      <h1>Prompt Sessie Manager</h1>
+
+      <nav class="tabs">
+        <button type="button" data-testid="tab-prompt" class="tab tab-actief">Prompt</button>
+        <button type="button" data-testid="tab-instellingen" class="tab">Instellingen</button>
+      </nav>
+
+      <div data-testid="prompt-paneel">
+      <form id="prompt-form">
+        <div class="veld">
+          <label for="rol">Rol <span class="verplicht">*</span></label>
+          <input type="text" id="rol" name="rol" placeholder="senior Python developer">
+          <p data-testid="validation-rol" class="validatie hidden">Vul een rol in.</p>
+        </div>
+
+        <div class="veld">
+          <label for="taak">Taak <span class="verplicht">*</span></label>
+          <textarea id="taak" name="taak" placeholder="een REST API bouwen" rows="2"></textarea>
+          <p data-testid="validation-taak" class="validatie hidden">Vul een taak in.</p>
+        </div>
+
+        <div class="veld">
+          <label for="doel">Doel <span class="verplicht">*</span></label>
+          <textarea id="doel" name="doel" placeholder="gebruikersdata op te slaan" rows="2"></textarea>
+          <p data-testid="validation-doel" class="validatie hidden">Vul een doel in.</p>
+        </div>
+
+        <div class="veld">
+          <label for="formaat">Formaat</label>
+          <textarea id="formaat" name="formaat" placeholder="JSON, markdown, bullet points" rows="3"></textarea>
+        </div>
+
+        <div class="veld">
+          <label for="stijl">Stijl</label>
+          <input type="text" id="stijl" name="stijl" placeholder="technisch, beknopt, formeel">
+        </div>
+
+        <div class="veld">
+          <label for="scope">Scope</label>
+          <input type="text" id="scope" name="scope" placeholder="backend only, één bestand">
+        </div>
+
+        <div class="veld">
+          <label for="eisen">Extra eisen</label>
+          <textarea id="eisen" name="eisen" placeholder="geen externe afhankelijkheden" rows="3"></textarea>
+        </div>
+
+        <div class="veld">
+          <label for="voorbeelden">Voorbeelden</label>
+          <textarea id="voorbeelden" name="voorbeelden" placeholder="zie bijlage, functielijst" rows="3"></textarea>
+        </div>
+
+        <div class="veld">
+          <label for="provider">Provider</label>
+          <select id="provider" name="provider" data-testid="provider-select">
+            <option value="ollama">Ollama</option>
+            <option value="groq">Groq</option>
+          </select>
+        </div>
+
+        <div class="veld hidden" data-testid="groq-model-veld">
+          <label for="groq-model">Model</label>
+          <select id="groq-model" name="groq-model" data-testid="groq-model-select"></select>
+        </div>
+
+        <div class="veld">
+          <label for="runs">Aantal runs</label>
+          <input type="number" id="runs" name="runs" data-testid="runs-input" value="1" min="1">
+        </div>
+
+        <div class="veld" data-testid="temperature-modus">
+          <label>Temperature-modus</label>
+          <label>
+            <input type="radio" name="temperature-modus" value="alle" data-testid="temperature-modus-alle" checked>
+            Één temperature voor alle runs
+          </label>
+          <label>
+            <input type="radio" name="temperature-modus" value="per_run" data-testid="temperature-modus-per-run">
+            Één temperature per run (komma-gescheiden)
+          </label>
+        </div>
+
+        <div class="veld">
+          <label for="temperature" data-testid="temperature-label">Temperature <span class="verplicht">*</span></label>
+          <input type="text" id="temperature" name="temperature" data-testid="temperature-input" value="0.8">
+        </div>
+
+        <div class="veld">
+          <label>Bijlage</label>
+          <div class="bijlage-rij">
+            <label class="bijlage-knop-label">
+              Kies bestand
+              <input type="file" id="bijlage-input" data-testid="bijlage-input" style="display:none">
+            </label>
+            <span data-testid="bijlage-status" id="bijlage-status">Geen bijlage</span>
+            <button type="button" data-testid="bijlage-verwijder" id="bijlage-verwijder" style="display:none">×</button>
+          </div>
+        </div>
+
+        <div class="veld">
+          <label for="review-modus">Reviewmodus</label>
+          <select id="review-modus" name="review-modus" data-testid="review-modus-select">
+            <option value="iteratief">Iteratief</option>
+          </select>
+        </div>
+
+        <div id="reviewer-lijst"></div>
+        <button type="button" id="reviewer-toevoegen" data-testid="reviewer-toevoegen">+ Reviewer toevoegen</button>
+
+        <button type="button" id="submit">Verstuur</button>
+      </form>
+
+      <div data-testid="loading" class="hidden">Bezig met laden...</div>
+
+      <p data-testid="log-status" class="hidden"></p>
+      <p data-testid="log-warning" class="hidden"></p>
+
+      <div data-testid="response" class="hidden"></div>
+
+      <div data-testid="run-results" class="hidden"></div>
+
+      <div data-testid="eindoutput" class="hidden"></div>
+
+      <div data-testid="error" class="hidden"></div>
+
+      </div><!-- /prompt-paneel -->
+
+      <div data-testid="instellingen-paneel" class="hidden">
+        <h2>Instellingen</h2>
+        <div class="veld">
+          <label for="groq-rpm">Groq RPM (requests per minuut)</label>
+          <input type="number" id="groq-rpm" data-testid="groq-rpm-input" min="0" value="30">
+        </div>
+        <div class="veld">
+          <label for="google-rpm">Google RPM (requests per minuut)</label>
+          <input type="number" id="google-rpm" data-testid="google-rpm-input" min="0" value="15">
+        </div>
+        <button type="button" id="instellingen-opslaan">Instellingen opslaan</button>
+        <p data-testid="instellingen-bevestiging" class="hidden"></p>
+        <p data-testid="instellingen-fout" class="hidden"></p>
+      </div><!-- /instellingen-paneel -->
+
+    </main>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/marked@15.0.12/marked.min.js" integrity="sha384-948ahk4ZmxYVYOc+rxN1H2gM1EJ2Duhp7uHtZ4WSLkV4Vtx5MUqnV+l7u9B+jFv+" crossorigin="anonymous"></script>
+  <script src="/app.js?v=2"></script>
+</body>
+</html>

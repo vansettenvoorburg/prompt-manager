@@ -2,10 +2,13 @@ import os
 import subprocess
 import sys
 import time
+from pathlib import Path
 
 import httpx
 import pytest
 from httpx import AsyncClient, ASGITransport
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "development"))
 
 _CLIPBOARD_INIT_SCRIPT = """
 (function () {
@@ -22,16 +25,24 @@ _CLIPBOARD_INIT_SCRIPT = """
 """
 
 
+def _is_playwright_test(fspath) -> bool:
+    """Playwright/frontend-tests staan in tests/playwright/ (incl. de
+    playwright_tests/-submap met weergave/, interactie/ en validatie/ uit
+    documentatie/testdekking.md)."""
+    parts = {p.lower() for p in str(fspath).replace("\\", "/").split("/")}
+    return "playwright" in parts
+
+
 def pytest_collection_modifyitems(items):
     for item in items:
-        if "test_frontend" in item.fspath.basename:
+        if _is_playwright_test(item.fspath):
             item.add_marker(pytest.mark.frontend)
 
 
 @pytest.fixture(autouse=True)
 def _maak_clipboard_schrijfbaar(request):
     """Maak navigator.clipboard schrijfbaar zodat frontend-tests hem kunnen mocken."""
-    if "test_frontend" not in str(request.node.fspath):
+    if not _is_playwright_test(request.node.fspath):
         return
     try:
         context = request.getfixturevalue("context")
@@ -121,7 +132,7 @@ def server():
     env = os.environ.copy()
     env["PORT"] = str(TEST_PORT)
     _server_process = subprocess.Popen(
-        [sys.executable, "app.py"],
+        [sys.executable, "development/app.py"],
         stdout=subprocess.DEVNULL,
         stderr=subprocess.DEVNULL,
         env=env,
