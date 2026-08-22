@@ -55,6 +55,7 @@ def test_opslaan_verstuurt_put_naar_api_settings(page: Page):
     page.reload()
     page.locator("[data-testid=tab-instellingen]").click()
     page.get_by_role("button", name="Instellingen opslaan").click()
+    expect(page.locator("[data-testid=instellingen-bevestiging]")).to_be_visible()
 
     assert len(verzoeken) >= 1, "PUT /api/settings werd niet verstuurd"
 
@@ -77,6 +78,7 @@ def test_opslaan_stuurt_groq_rpm_waarde_mee(page: Page):
     page.locator("[data-testid=tab-instellingen]").click()
     page.locator("[data-testid=groq-rpm-input]").fill("20")
     page.get_by_role("button", name="Instellingen opslaan").click()
+    expect(page.locator("[data-testid=instellingen-bevestiging]")).to_be_visible()
 
     assert vastgelegd.get("groq_rpm") == 20, (
         f"Verwacht groq_rpm=20, maar verzoek bevat: {vastgelegd}"
@@ -101,6 +103,7 @@ def test_opslaan_stuurt_google_rpm_waarde_mee(page: Page):
     page.locator("[data-testid=tab-instellingen]").click()
     page.locator("[data-testid=google-rpm-input]").fill("10")
     page.get_by_role("button", name="Instellingen opslaan").click()
+    expect(page.locator("[data-testid=instellingen-bevestiging]")).to_be_visible()
 
     assert vastgelegd.get("google_rpm") == 10, (
         f"Verwacht google_rpm=10, maar verzoek bevat: {vastgelegd}"

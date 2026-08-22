@@ -88,6 +88,7 @@ def test_runs_wordt_meegestuurd_in_aanvraag(page: Page):
     page.route(PROMPT_ROUTE, vang_op)
     _vul_verplichte_velden(page)
     page.get_by_role("button", name="Verstuur").click()
+    expect(page.locator("[data-testid=run-results]")).to_be_visible()
 
     assert "runs" in vastgelegd, f"Veld 'runs' ontbreekt in aanvraag: {vastgelegd}"
     assert vastgelegd["runs"] == 1
@@ -109,6 +110,7 @@ def test_temperature_modus_wordt_meegestuurd_in_aanvraag(page: Page):
     page.route(PROMPT_ROUTE, vang_op)
     _vul_verplichte_velden(page)
     page.get_by_role("button", name="Verstuur").click()
+    expect(page.locator("[data-testid=run-results]")).to_be_visible()
 
     assert "temperature_modus" in vastgelegd, f"Veld 'temperature_modus' ontbreekt: {vastgelegd}"
 
@@ -129,6 +131,7 @@ def test_temperatures_wordt_meegestuurd_in_aanvraag(page: Page):
     page.route(PROMPT_ROUTE, vang_op)
     _vul_verplichte_velden(page)
     page.get_by_role("button", name="Verstuur").click()
+    expect(page.locator("[data-testid=run-results]")).to_be_visible()
 
     assert "temperatures" in vastgelegd, f"Veld 'temperatures' ontbreekt: {vastgelegd}"
     assert isinstance(vastgelegd["temperatures"], list)

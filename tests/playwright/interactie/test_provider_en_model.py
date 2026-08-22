@@ -67,15 +67,12 @@ def test_ollama_provider_meegestuurd_in_aanvraag(page: Page):
 
     def vang_op(route):
         vastgelegd.update(route.request.post_data_json)
-        route.fulfill(
-            status=200,
-            content_type="application/json",
-            body='{"response": "Antwoord", "log_status": "ok", "log_path": "/logs/test.json"}',
-        )
+        route.fulfill(status=200, content_type="application/json", body=_STUB_PROMPT_RESPONSE)
 
     page.route(PROMPT_ROUTE, vang_op)
     _vul_verplichte_velden(page)
     page.get_by_role("button", name="Verstuur").click()
+    expect(page.locator("[data-testid=run-results]")).to_be_visible()
 
     assert vastgelegd.get("provider") == "ollama", f"Verwacht 'ollama', kreeg: {vastgelegd.get('provider')!r}"
 
@@ -88,16 +85,13 @@ def test_groq_provider_meegestuurd_in_aanvraag(page: Page):
 
     def vang_op(route):
         vastgelegd.update(route.request.post_data_json)
-        route.fulfill(
-            status=200,
-            content_type="application/json",
-            body='{"response": "Groq antwoord", "log_status": "ok", "log_path": "/logs/test.json"}',
-        )
+        route.fulfill(status=200, content_type="application/json", body=_STUB_PROMPT_RESPONSE)
 
     page.route(PROMPT_ROUTE, vang_op)
     _kies_groq(page)
     _vul_verplichte_velden(page)
     page.get_by_role("button", name="Verstuur").click()
+    expect(page.locator("[data-testid=run-results]")).to_be_visible()
 
     assert vastgelegd.get("provider") == "groq", f"Verwacht 'groq', kreeg: {vastgelegd.get('provider')!r}"
 
@@ -177,6 +171,7 @@ def test_geselecteerd_model_wordt_meegestuurd_bij_aanvraag(page: Page):
     _kies_groq(page)
     page.locator("[data-testid=groq-model-select]").select_option("qwen3-32b")
     page.get_by_role("button", name="Verstuur").click()
+    expect(page.locator("[data-testid=run-results]")).to_be_visible()
 
     assert vastgelegd.get("model") == "qwen3-32b", (
         f"Verwacht model='qwen3-32b' in de aanvraag, kreeg: {vastgelegd}"
