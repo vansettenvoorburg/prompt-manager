@@ -1,17 +1,18 @@
 """
-Frontend-tests voor story 03: sessie opslaan en laden.
+Validatie-tests voor sessiebeheer.
 
-Vereist: geen — de `server`-fixture (conftest.py) start de app automatisch op de testpoort.
+Bron: documentatie/acceptatiecriteria/sessiebeheer.md
+Vereist: geen — de `server`-fixture (tests/conftest.py) start de app automatisch op de testpoort.
 
-Zie documentatie/testdekking.md voor de volledige TD-ID-toewijzing.
+Testcodes volgen het formaat <bestand>.<categorie>.<volgnummer>, bijv.
+sessiebeheer.validatie.01 — bewust een ander formaat dan de AC-codes (SESSIE-V-01).
 """
-import json
 import pytest
 from playwright.sync_api import Page, expect
 
 from tests.conftest import BASE_URL
+
 SESSIONS_ROUTE = "**/api/sessions"
-SESSION_ITEM_ROUTE = "**/api/sessions/*"
 
 
 @pytest.fixture(autouse=True)
@@ -35,42 +36,13 @@ def _vul_formulier(page: Page, naam: str = "mijn-sessie"):
 
 
 # ---------------------------------------------------------------------------
-# Formulierstructuur
-# ---------------------------------------------------------------------------
-
-def test_sessienaam_invoerveld_is_zichtbaar(page: Page):
-    """Dekt: TD-03-01 — het invoerveld voor de sessienaam is zichtbaar."""
-    expect(page.locator("[name=session-name]")).to_be_visible()
-
-
-def test_opslaan_knop_is_zichtbaar(page: Page):
-    """Dekt: TD-03-02 — de opslaan-knop is zichtbaar."""
-    expect(page.get_by_role("button", name="Opslaan")).to_be_visible()
-
-
-# ---------------------------------------------------------------------------
-# Opslaan — happy path
-# ---------------------------------------------------------------------------
-
-def test_opslaan_toont_bevestiging(page: Page):
-    """Dekt: TD-03-03 — na opslaan verschijnt een bevestiging met de naam van de sessie."""
-    page.route(SESSIONS_ROUTE, lambda route: route.fulfill(
-        status=200, content_type="application/json", body='{"status": "ok"}',
-    ))
-    _vul_formulier(page, naam="mijn-sessie")
-    page.get_by_role("button", name="Opslaan").click()
-
-    bevestiging = page.locator("[data-testid=save-confirmation]")
-    expect(bevestiging).to_be_visible()
-    expect(bevestiging).to_contain_text("mijn-sessie")
-
-
-# ---------------------------------------------------------------------------
-# Validatie
+# SESSIE-V-01 — lege sessienaam
 # ---------------------------------------------------------------------------
 
 def test_lege_sessienaam_toont_validatiemelding(page: Page):
-    """Dekt: TD-03-04 — opslaan met lege sessienaam toont een validatiemelding; er wordt geen API-call gedaan."""
+    """Testcode: sessiebeheer.validatie.01
+    Dekt: SESSIE-V-01 — opslaan met lege sessienaam toont een validatiemelding; er wordt geen API-call gedaan.
+    """
     calls = []
     page.route(SESSIONS_ROUTE, lambda route: (
         calls.append(route) or route.abort()
@@ -88,11 +60,13 @@ def test_lege_sessienaam_toont_validatiemelding(page: Page):
 
 
 # ---------------------------------------------------------------------------
-# Overschrijven
+# SESSIE-V-02 — bestaande naam: overschrijf-bevestiging
 # ---------------------------------------------------------------------------
 
 def test_bestaande_naam_toont_bevestigingsdialoog(page: Page):
-    """Dekt: TD-03-05 — als de sessienaam al bestaat (409), verschijnt een bevestigingsdialoog."""
+    """Testcode: sessiebeheer.validatie.02
+    Dekt: SESSIE-V-02 — als de sessienaam al bestaat (409), verschijnt een bevestigingsdialoog.
+    """
     page.route(SESSIONS_ROUTE, lambda route: route.fulfill(
         status=409, content_type="application/json",
         body='{"detail": "Sessie bestaat al"}',
@@ -107,7 +81,9 @@ def test_bestaande_naam_toont_bevestigingsdialoog(page: Page):
 
 
 def test_annuleren_bij_overschrijven_doet_niets(page: Page):
-    """Dekt: TD-03-06 — annuleren in de bevestigingsdialoog doet niets; de sessie wordt niet overschreven."""
+    """Testcode: sessiebeheer.validatie.03
+    Dekt: SESSIE-V-02 — annuleren in de bevestigingsdialoog doet niets; de sessie wordt niet overschreven.
+    """
     post_calls = []
 
     def handle_route(route):
@@ -134,72 +110,13 @@ def test_annuleren_bij_overschrijven_doet_niets(page: Page):
 
 
 # ---------------------------------------------------------------------------
-# Sessieslijst
-# ---------------------------------------------------------------------------
-
-def test_sessieslijst_is_zichtbaar(page: Page):
-    """Dekt: TD-03-07 — de sessieslijst is zichtbaar op de pagina."""
-    expect(page.locator("[data-testid=sessions-list]")).to_be_visible()
-
-
-def test_lege_sessieslijst_toont_melding(page: Page):
-    """Dekt: TD-03-09 — als er geen sessies zijn, is er een lege-staat melding zichtbaar."""
-    expect(page.locator("[data-testid=sessions-empty]")).to_be_visible()
-
-
-def test_sessie_in_lijst_is_zichtbaar_na_ophalen(page: Page):
-    """Dekt: TD-03-07 — opgeslagen sessies zijn zichtbaar als klikbare items in de lijst."""
-    page.unroute(SESSIONS_ROUTE)
-    page.route(SESSIONS_ROUTE, lambda route: route.fulfill(
-        status=200, content_type="application/json",
-        body='{"sessions": ["mijn-sessie"]}',
-    ))
-    page.reload()
-
-    expect(page.locator("[data-testid=sessions-list]")).to_contain_text("mijn-sessie")
-
-
-def test_sessie_selecteren_herstelt_formulier(page: Page):
-    """Dekt: TD-03-08 — een sessie aanklikken herstelt de acht velden in het formulier."""
-    sessie_data = {
-        "name": "mijn-sessie",
-        "rol": "senior developer",
-        "taak": "een API ontwerpen",
-        "doel": "data op te slaan",
-        "formaat": "JSON",
-        "stijl": "technisch",
-        "scope": "",
-        "eisen": "",
-        "voorbeelden": "",
-        "provider": "ollama",
-        "model": "llama3.2",
-        "created_at": "2026-05-10T12:00:00",
-    }
-
-    page.unroute(SESSIONS_ROUTE)
-    page.route("**/api/sessions", lambda route: route.fulfill(
-        status=200, content_type="application/json",
-        body='{"sessions": ["mijn-sessie"]}',
-    ) if not route.request.url.endswith("/mijn-sessie") else route.continue_())
-    page.route("**/api/sessions/mijn-sessie", lambda route: route.fulfill(
-        status=200, content_type="application/json",
-        body=json.dumps(sessie_data),
-    ))
-    page.reload()
-
-    page.locator("[data-testid=sessions-list]").get_by_text("mijn-sessie").click()
-
-    expect(page.locator("[name=rol]")).to_have_value("senior developer")
-    expect(page.locator("[name=taak]")).to_have_value("een API ontwerpen")
-    expect(page.locator("[name=doel]")).to_have_value("data op te slaan")
-
-
-# ---------------------------------------------------------------------------
-# Foutafhandeling
+# SESSIE-V-03 — opslaan mislukt
 # ---------------------------------------------------------------------------
 
 def test_opslaan_mislukt_toont_foutmelding(page: Page):
-    """Dekt: TD-03-10 — als opslaan mislukt (500), verschijnt een foutmelding."""
+    """Testcode: sessiebeheer.validatie.04
+    Dekt: SESSIE-V-03 — als opslaan mislukt (500), verschijnt een foutmelding.
+    """
     page.route(SESSIONS_ROUTE, lambda route: route.fulfill(
         status=500, content_type="application/json",
         body='{"detail": "Schrijffout"}',
@@ -213,8 +130,14 @@ def test_opslaan_mislukt_toont_foutmelding(page: Page):
     expect(page.locator("[data-testid=save-error]")).to_be_visible()
 
 
+# ---------------------------------------------------------------------------
+# SESSIE-V-04 — laden mislukt
+# ---------------------------------------------------------------------------
+
 def test_laden_mislukt_toont_foutmelding(page: Page):
-    """Dekt: TD-03-11 — als laden mislukt (500), verschijnt een foutmelding."""
+    """Testcode: sessiebeheer.validatie.05
+    Dekt: SESSIE-V-04 — als laden mislukt (500), verschijnt een foutmelding.
+    """
     page.unroute(SESSIONS_ROUTE)
     page.route("**/api/sessions", lambda route: route.fulfill(
         status=200, content_type="application/json",

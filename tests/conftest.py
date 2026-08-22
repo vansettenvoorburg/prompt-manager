@@ -22,16 +22,23 @@ _CLIPBOARD_INIT_SCRIPT = """
 """
 
 
+def _is_playwright_test(fspath) -> bool:
+    """Playwright/frontend-tests staan in tests/playwright/ (incl. de weergave/,
+    interactie/ en validatie/ submappen uit documentatie/testdekking.md)."""
+    parts = {p.lower() for p in str(fspath).replace("\\", "/").split("/")}
+    return "playwright" in parts
+
+
 def pytest_collection_modifyitems(items):
     for item in items:
-        if "test_frontend" in item.fspath.basename:
+        if _is_playwright_test(item.fspath):
             item.add_marker(pytest.mark.frontend)
 
 
 @pytest.fixture(autouse=True)
 def _maak_clipboard_schrijfbaar(request):
     """Maak navigator.clipboard schrijfbaar zodat frontend-tests hem kunnen mocken."""
-    if "test_frontend" not in str(request.node.fspath):
+    if not _is_playwright_test(request.node.fspath):
         return
     try:
         context = request.getfixturevalue("context")
