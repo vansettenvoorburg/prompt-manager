@@ -199,9 +199,10 @@ def _schrijf_logbestand(
 ):
     datum_tijd_formaat = "%Y-%m-%d_%H-%M-%S-%f" if met_microseconden else "%Y-%m-%d_%H-%M-%S"
     datum_tijd = start.strftime(datum_tijd_formaat)
+    provider_gesaneerd = _saneer_voor_bestandsnaam(provider)
     model_gesaneerd = _saneer_voor_bestandsnaam(model)
     sessie_gesaneerd = _saneer_voor_bestandsnaam(sessie)
-    bestandsnaam = f"{datum_tijd}_{provider}_{model_gesaneerd}_{sessie_gesaneerd}_{naamsuffix}.json"
+    bestandsnaam = f"{datum_tijd}_{provider_gesaneerd}_{model_gesaneerd}_{sessie_gesaneerd}_{naamsuffix}.json"
     try:
         LOGS_DIR.mkdir(parents=True, exist_ok=True)
     except OSError as exc:
@@ -690,10 +691,6 @@ async def handle_prompt_upload(
         bijlage_tekst = inhoud.decode("utf-8", errors="replace")
 
     try:
-        runs_int = int(runs)
-    except (ValueError, TypeError):
-        runs_int = 1
-    try:
         temps_parsed = json.loads(temperatures)
         temperatures_list = temps_parsed if isinstance(temps_parsed, list) else [float(temps_parsed)]
     except (json.JSONDecodeError, TypeError, ValueError):
@@ -701,22 +698,26 @@ async def handle_prompt_upload(
 
     try:
         reviewers_data = json.loads(reviewers)
-        reviewers_list = [ReviewerConfig(**r) for r in reviewers_data] if isinstance(reviewers_data, list) else []
-    except (json.JSONDecodeError, TypeError, ValueError):
-        reviewers_list = []
+        if not isinstance(reviewers_data, list):
+            reviewers_data = []
+    except (json.JSONDecodeError, TypeError):
+        reviewers_data = []
 
-    prompt_body = PromptRequest(
-        rol=rol, taak=taak, doel=doel,
-        formaat=formaat, stijl=stijl, scope=scope,
-        eisen=eisen, voorbeelden=voorbeelden,
-        sessie=sessie, provider=provider,
-        runs=runs_int,
-        temperature_modus=temperature_modus,
-        temperatures=temperatures_list,
-        reviewers=reviewers_list,
-        review_modus=review_modus,
-        model=model,
-    )
+    try:
+        prompt_body = PromptRequest(
+            rol=rol, taak=taak, doel=doel,
+            formaat=formaat, stijl=stijl, scope=scope,
+            eisen=eisen, voorbeelden=voorbeelden,
+            sessie=sessie, provider=provider,
+            runs=runs,
+            temperature_modus=temperature_modus,
+            temperatures=temperatures_list,
+            reviewers=reviewers_data,
+            review_modus=review_modus,
+            model=model,
+        )
+    except ValidationError as exc:
+        raise HTTPException(status_code=422, detail=exc.errors())
 
     return await _voer_prompt_uit(prompt_body, bijlage_bestandsnaam, bijlage_tekst)
 

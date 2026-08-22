@@ -26,3 +26,5 @@ Bron: story 08.
 ## Validatie
 
 - **REVIEW-V-01** — Zowel rol als omschrijving zijn verplicht per reviewer.
+- **REVIEW-V-02** — Bevat een reviewerstap-resultaat HTML- of scripttags, dan worden deze getoond
+  als platte tekst in plaats van als uitvoerbare code in de browser.

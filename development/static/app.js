@@ -147,6 +147,14 @@ function _leesReviewers() {
   });
 }
 
+function escapeHtml(tekst) {
+  return tekst.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+function renderAiOutput(tekst) {
+  return marked.parse(escapeHtml(tekst || ''));
+}
+
 function maakKopieerKnop(tekst) {
   const knop = document.createElement('button');
   knop.type = 'button';
@@ -180,7 +188,7 @@ function maakReviewerStapItem(stap) {
     header.appendChild(maakKopieerKnop(stap.response || ''));
     const body = document.createElement('div');
     body.classList.add('run-body');
-    body.innerHTML = marked.parse(stap.response || '');
+    body.innerHTML = renderAiOutput(stap.response);
     item.appendChild(header);
     item.appendChild(body);
   }
@@ -279,7 +287,7 @@ function renderRunResultaten(runs, reviewerStappen) {
       header.appendChild(maakKopieerKnop(run.response || ''));
       const body = document.createElement('div');
       body.classList.add('run-body');
-      body.innerHTML = marked.parse(run.response || '');
+      body.innerHTML = renderAiOutput(run.response);
       item.appendChild(header);
       item.appendChild(body);
     }
@@ -640,7 +648,7 @@ button.addEventListener('click', async () => {
         eindHeader.appendChild(maakKopieerKnop(data.eindoutput || ''));
         const eindBody = document.createElement('div');
         eindBody.classList.add('run-body');
-        eindBody.innerHTML = marked.parse(data.eindoutput || '');
+        eindBody.innerHTML = renderAiOutput(data.eindoutput);
         eindoutputEl.appendChild(eindHeader);
         eindoutputEl.appendChild(eindBody);
         eindoutputEl.classList.remove('hidden');

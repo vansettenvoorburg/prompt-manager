@@ -1,5 +1,5 @@
 """Page Object voor de hoofdpagina van de Prompt Sessie Manager (single-page app)."""
-from playwright.sync_api import Page, expect
+from playwright.sync_api import Locator, Page, expect
 
 from tests.playwright.components.reviewer_list import ReviewerList
 from tests.playwright.components.sessions_sidebar import SessionsSidebar
@@ -59,6 +59,7 @@ class PromptPage:
         self.response = page.get_by_test_id("response")
         self.run_results = page.get_by_test_id("run-results")
         self.eindoutput = page.get_by_test_id("eindoutput")
+        self.reviewer_stap_items = page.get_by_test_id("reviewer-stap-item")
         self.error = page.get_by_test_id("error")
         self.log_status = page.get_by_test_id("log-status")
         self.log_warning = page.get_by_test_id("log-warning")
@@ -161,7 +162,7 @@ class PromptPage:
         expect(self.eindoutput).to_be_visible()
 
     def expect_reviewer_stap_zichtbaar(self) -> None:
-        expect(self.page.get_by_test_id("reviewer-stap-item").first).to_be_visible()
+        expect(self.reviewer_stap_items.first).to_be_visible()
 
     def expect_loading_zichtbaar(self) -> None:
         expect(self.loading).to_be_visible()
@@ -205,3 +206,13 @@ class PromptPage:
 
     def expect_bijlage_verwijder_knop_niet_zichtbaar(self) -> None:
         expect(self.bijlage_verwijder_knop).not_to_be_visible()
+
+    def expect_html_getoond_als_platte_tekst(self, blok: Locator, ruwe_html: str) -> None:
+        """Controleert dat AI-output met HTML/scripttags als platte tekst is getoond (niet
+        geparsed tot uitvoerbare elementen): de ruwe tekst is zichtbaar, en een ingesloten
+        handler (bijv. een onerror-attribuut) is niet uitgevoerd."""
+        expect(blok).to_contain_text(ruwe_html)
+        assert self.page.evaluate("window.__xssFired") is None, (
+            "Een ingesloten HTML-handler uit AI-output is uitgevoerd — de output is niet als "
+            "platte tekst getoond."
+        )
