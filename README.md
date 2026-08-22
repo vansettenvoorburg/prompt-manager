@@ -105,5 +105,5 @@ Backendtests (async, in-process testclient):
 pytest tests/backend
 ```
 
-Zie `specs/testdekking.md` voor het overzicht van welk browserscenario door welke
+Zie `documentatie/testdekking.md` voor het overzicht van welk browserscenario door welke
 Playwright-test gedekt wordt.

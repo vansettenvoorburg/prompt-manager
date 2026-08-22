@@ -25,7 +25,7 @@ Niet elk AC-bullet uit `acceptatiecriteria/01` t/m `/12` levert een dekkingsitem
 - **AC-beschreven gedrag dat niet in de huidige implementatie bestaat** krijgt wél een
   dekkingsitem (categorie `playwright`), maar is gemarkeerd ❌ **niet geïmplementeerd — geen
   test mogelijk**. Er is voor dit document geen nieuwe applicatiefunctionaliteit gebouwd (buiten
-  scope van story 13); zie de items TD-06-16 en TD-08-07.
+  scope van story 13); zie het item TD-08-07.
 - Bij twee items **⚠️** wijkt de praktijkbevinding af van de letterlijke AC-tekst (zie de noot
   bij het item). Ook dit valt buiten scope om te herstellen in deze story.
 
@@ -163,22 +163,21 @@ Bron: `acceptatiecriteria/06-runs-en-temperature.md`
 | TD-06-13 | `runs`/`temperature_modus`/`temperatures` worden meegestuurd bij uitvoeren | playwright | `test_frontend_06.py::test_runs_wordt_meegestuurd_in_aanvraag`, `test_temperature_modus_wordt_meegestuurd_in_aanvraag`, `test_temperatures_wordt_meegestuurd_in_aanvraag` |
 | TD-06-14 | `runs`/`temperature_modus`/`temperatures` worden meegestuurd bij sessie opslaan | playwright | `test_frontend_06.py::test_sessie_opslaan_stuurt_runs_mee`, `test_sessie_opslaan_stuurt_temperature_modus_mee`, `test_sessie_opslaan_stuurt_temperatures_mee` |
 | TD-06-15 | Bij laden sessie worden `runs`/modus/waarden automatisch ingevuld | playwright | `test_frontend_06.py::test_sessie_laden_vult_runs_in`, `test_sessie_laden_vult_temperature_modus_in`, `test_sessie_laden_vult_temperatures_in` |
-| TD-06-16 | UI toont de voortgang per run ("Run 1 van 3 — bezig…") | playwright | ❌ **niet geïmplementeerd — geen test mogelijk.** `static/app.js` rendert resultaten pas na afloop van alle runs; er is geen voortgangsindicator per run. |
-| TD-06-17 | Na afloop toont de UI alle run-resultaten op volgorde | playwright | `test_frontend_06.py::test_ui_toont_alle_run_resultaten_na_uitvoering` |
-| TD-06-18 | `runs` < 1 → foutmelding, aanvraag niet verstuurd | playwright | `test_frontend_06.py::test_runs_nul_toont_foutmelding_en_verstuurt_niet` |
-| TD-06-19 | Lege temperature → foutmelding, aanvraag geblokkeerd | playwright | `test_frontend_06.py::test_temperature_leeg_toont_foutmelding_en_verstuurt_niet` |
-| TD-06-20 | Temperature buiten 0–2 → foutmelding die het bereik noemt | playwright | `test_frontend_06.py::test_temperature_buiten_bereik_toont_foutmelding`, `test_temperature_foutmelding_noemt_bereik` |
-| TD-06-21 | Modus `per_run` met verkeerd aantal temperatures → foutmelding met verwacht aantal | playwright | `test_frontend_06.py::test_per_run_mismatch_toont_foutmelding`, `test_per_run_mismatch_foutmelding_noemt_verwacht_aantal` |
-| TD-06-22 | Sessie zonder runs/temperature-velden laadt zonder foutmelding | playwright | `test_frontend_06.py::test_sessie_laden_zonder_runs_velden_geeft_geen_fout` ⚠️ AC verwacht een *leeg* temperature-veld na laden; de implementatie laat het veld op de bestaande/standaardwaarde staan. De test verifieert alleen dat laden niet crasht, niet het "leeg"-gedrag. |
-| TD-06-23 | Mislukte run → foutmelding voor die run, geslaagde run blijft zichtbaar | playwright | `test_frontend_06.py::test_ui_toont_foutmelding_voor_mislukte_run`, `test_ui_toont_geslaagde_run_ondanks_mislukte_run` |
-| TD-06-24 | Prompt wordt precies `runs` keer verstuurd | backend/integratie | `test_backend_06.py::test_drie_runs_roept_api_drie_keer_aan`, `test_een_run_roept_api_een_keer_aan` |
-| TD-06-25 | Modus `alle` gebruikt dezelfde temperature voor elke run | backend/integratie | `test_backend_06.py::test_modus_alle_geeft_zelfde_temperature_aan_elke_run` |
-| TD-06-26 | Modus `per_run` gebruikt de temperature die bij het volgnummer hoort | backend/integratie | `test_backend_06.py::test_modus_per_run_geeft_juiste_temperature_per_run` |
-| TD-06-27 | Runs worden sequentieel uitgevoerd en op volgorde teruggegeven | backend/integratie | `test_backend_06.py::test_response_runs_bevat_antwoorden_op_volgorde` |
-| TD-06-28 | Sessiebestand bevat `runs`/`temperature_modus`/`temperatures` | backend/integratie | `test_backend_06.py::test_sessie_opslaan_bevat_runs`, `test_sessie_opslaan_bevat_temperature_modus`, `test_sessie_opslaan_bevat_temperatures` |
-| TD-06-29 | Elke run apart logbestand, bestandsnaam bevat run-nummer + temperature, `run_nummer`/`temperature`-velden, altijd `_run1`-suffix bij 1 run | backend/integratie | `test_backend_06.py::test_drie_runs_maakt_drie_logbestanden`, `test_logbestandsnaam_bevat_run_nummers`, `test_logbestandsnaam_bevat_temperature`, `test_logbestand_bevat_run_nummer_veld`, `test_logbestand_bevat_temperature_veld`, `test_een_run_heeft_altijd_run_suffix` |
-| TD-06-30 | Mislukte run → uitvoering gaat door, geen logbestand voor die run | backend/integratie | `test_backend_06.py::test_uitvoering_gaat_door_na_mislukte_run`, `test_mislukte_run_maakt_geen_logbestand`, `test_geslaagde_run_na_mislukte_run_heeft_log` |
-| TD-06-31 | Mislukte run bevat foutmelding in de response | backend/integratie | `test_backend_06.py::test_mislukte_run_bevat_foutmelding_in_response` |
+| TD-06-16 | Na afloop toont de UI alle run-resultaten op volgorde | playwright | `test_frontend_06.py::test_ui_toont_alle_run_resultaten_na_uitvoering` |
+| TD-06-17 | `runs` < 1 → foutmelding, aanvraag niet verstuurd | playwright | `test_frontend_06.py::test_runs_nul_toont_foutmelding_en_verstuurt_niet` |
+| TD-06-18 | Lege temperature → foutmelding, aanvraag geblokkeerd | playwright | `test_frontend_06.py::test_temperature_leeg_toont_foutmelding_en_verstuurt_niet` |
+| TD-06-19 | Temperature buiten 0–2 → foutmelding die het bereik noemt | playwright | `test_frontend_06.py::test_temperature_buiten_bereik_toont_foutmelding`, `test_temperature_foutmelding_noemt_bereik` |
+| TD-06-20 | Modus `per_run` met verkeerd aantal temperatures → foutmelding met verwacht aantal | playwright | `test_frontend_06.py::test_per_run_mismatch_toont_foutmelding`, `test_per_run_mismatch_foutmelding_noemt_verwacht_aantal` |
+| TD-06-21 | Sessie zonder runs/temperature-velden laadt zonder foutmelding | playwright | `test_frontend_06.py::test_sessie_laden_zonder_runs_velden_geeft_geen_fout` ⚠️ AC verwacht een *leeg* temperature-veld na laden; de implementatie laat het veld op de bestaande/standaardwaarde staan. De test verifieert alleen dat laden niet crasht, niet het "leeg"-gedrag. |
+| TD-06-22 | Mislukte run → foutmelding voor die run, geslaagde run blijft zichtbaar | playwright | `test_frontend_06.py::test_ui_toont_foutmelding_voor_mislukte_run`, `test_ui_toont_geslaagde_run_ondanks_mislukte_run` |
+| TD-06-23 | Prompt wordt precies `runs` keer verstuurd | backend/integratie | `test_backend_06.py::test_drie_runs_roept_api_drie_keer_aan`, `test_een_run_roept_api_een_keer_aan` |
+| TD-06-24 | Modus `alle` gebruikt dezelfde temperature voor elke run | backend/integratie | `test_backend_06.py::test_modus_alle_geeft_zelfde_temperature_aan_elke_run` |
+| TD-06-25 | Modus `per_run` gebruikt de temperature die bij het volgnummer hoort | backend/integratie | `test_backend_06.py::test_modus_per_run_geeft_juiste_temperature_per_run` |
+| TD-06-26 | Runs worden sequentieel uitgevoerd en op volgorde teruggegeven | backend/integratie | `test_backend_06.py::test_response_runs_bevat_antwoorden_op_volgorde` |
+| TD-06-27 | Sessiebestand bevat `runs`/`temperature_modus`/`temperatures` | backend/integratie | `test_backend_06.py::test_sessie_opslaan_bevat_runs`, `test_sessie_opslaan_bevat_temperature_modus`, `test_sessie_opslaan_bevat_temperatures` |
+| TD-06-28 | Elke run apart logbestand, bestandsnaam bevat run-nummer + temperature, `run_nummer`/`temperature`-velden, altijd `_run1`-suffix bij 1 run | backend/integratie | `test_backend_06.py::test_drie_runs_maakt_drie_logbestanden`, `test_logbestandsnaam_bevat_run_nummers`, `test_logbestandsnaam_bevat_temperature`, `test_logbestand_bevat_run_nummer_veld`, `test_logbestand_bevat_temperature_veld`, `test_een_run_heeft_altijd_run_suffix` |
+| TD-06-29 | Mislukte run → uitvoering gaat door, geen logbestand voor die run | backend/integratie | `test_backend_06.py::test_uitvoering_gaat_door_na_mislukte_run`, `test_mislukte_run_maakt_geen_logbestand`, `test_geslaagde_run_na_mislukte_run_heeft_log` |
+| TD-06-30 | Mislukte run bevat foutmelding in de response | backend/integratie | `test_backend_06.py::test_mislukte_run_bevat_foutmelding_in_response` |
 
 ---
 
@@ -331,10 +330,10 @@ Bron: `acceptatiecriteria/11-groq-modelkeuze.md`
 | 03 | 11 | 3 | 0 |
 | 04 | 2 | 13 | 0 |
 | 05 | 7 | 10 | 0 |
-| 06 | 23 | 8 | 1 (TD-06-16) |
+| 06 | 22 | 8 | 0 |
 | 07 | 7 | 13 | 0 |
 | 08 | 13 | 15 | 1 (TD-08-07) |
 | 09 | 6 | 11 | 0 |
 | 10 | 10 | 1 | 0 |
 | 11 | 9 | 10 | 0 |
-| **Totaal** | **98** | **86** | **2** |
+| **Totaal** | **97** | **86** | **1** |

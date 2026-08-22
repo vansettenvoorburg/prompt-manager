@@ -208,7 +208,7 @@ def test_temperatures_wordt_meegestuurd_in_aanvraag(page: Page):
 # ---------------------------------------------------------------------------
 
 def test_runs_nul_toont_foutmelding_en_verstuurt_niet(page: Page):
-    """Dekt: TD-06-18 — bij runs=0 toont de UI een foutmelding en wordt de aanvraag niet verstuurd."""
+    """Dekt: TD-06-17 — bij runs=0 toont de UI een foutmelding en wordt de aanvraag niet verstuurd."""
     calls = []
     page.route(PROMPT_ROUTE, lambda route: (calls.append(route) or route.abort()))
 
@@ -221,7 +221,7 @@ def test_runs_nul_toont_foutmelding_en_verstuurt_niet(page: Page):
 
 
 def test_temperature_leeg_toont_foutmelding_en_verstuurt_niet(page: Page):
-    """Dekt: TD-06-19 — bij een lege temperature toont de UI een foutmelding en wordt de aanvraag niet verstuurd."""
+    """Dekt: TD-06-18 — bij een lege temperature toont de UI een foutmelding en wordt de aanvraag niet verstuurd."""
     calls = []
     page.route(PROMPT_ROUTE, lambda route: (calls.append(route) or route.abort()))
 
@@ -234,7 +234,7 @@ def test_temperature_leeg_toont_foutmelding_en_verstuurt_niet(page: Page):
 
 
 def test_temperature_buiten_bereik_toont_foutmelding(page: Page):
-    """Dekt: TD-06-20 — bij een temperature buiten 0–2 toont de UI een foutmelding."""
+    """Dekt: TD-06-19 — bij een temperature buiten 0–2 toont de UI een foutmelding."""
     page.locator("[data-testid=temperature-input]").fill("2.5")
     _vul_verplichte_velden(page)
     page.get_by_role("button", name="Verstuur").click()
@@ -243,7 +243,7 @@ def test_temperature_buiten_bereik_toont_foutmelding(page: Page):
 
 
 def test_temperature_foutmelding_noemt_bereik(page: Page):
-    """Dekt: TD-06-20 — de foutmelding bij een ongeldige temperature vermeldt het geldige bereik (0 en 2)."""
+    """Dekt: TD-06-19 — de foutmelding bij een ongeldige temperature vermeldt het geldige bereik (0 en 2)."""
     page.locator("[data-testid=temperature-input]").fill("3.0")
     _vul_verplichte_velden(page)
     page.get_by_role("button", name="Verstuur").click()
@@ -255,7 +255,7 @@ def test_temperature_foutmelding_noemt_bereik(page: Page):
 
 
 def test_per_run_mismatch_toont_foutmelding(page: Page):
-    """Dekt: TD-06-21 — in modus 'per_run' met verkeerd aantal temperatures toont de UI een foutmelding."""
+    """Dekt: TD-06-20 — in modus 'per_run' met verkeerd aantal temperatures toont de UI een foutmelding."""
     page.locator("[data-testid=runs-input]").fill("3")
     page.locator("[data-testid=temperature-modus-per-run]").click()
     page.locator("[data-testid=temperature-input]").fill("0.3, 0.7")
@@ -266,7 +266,7 @@ def test_per_run_mismatch_toont_foutmelding(page: Page):
 
 
 def test_per_run_mismatch_foutmelding_noemt_verwacht_aantal(page: Page):
-    """Dekt: TD-06-21 — de foutmelding bij een per_run-mismatch vermeldt het verwachte aantal temperatures."""
+    """Dekt: TD-06-20 — de foutmelding bij een per_run-mismatch vermeldt het verwachte aantal temperatures."""
     page.locator("[data-testid=runs-input]").fill("3")
     page.locator("[data-testid=temperature-modus-per-run]").click()
     page.locator("[data-testid=temperature-input]").fill("0.3, 0.7")
@@ -282,7 +282,7 @@ def test_per_run_mismatch_foutmelding_noemt_verwacht_aantal(page: Page):
 # ---------------------------------------------------------------------------
 
 def test_ui_toont_alle_run_resultaten_na_uitvoering(page: Page):
-    """Dekt: TD-06-17 — na uitvoering toont de UI alle run-resultaten op volgorde."""
+    """Dekt: TD-06-16 — na uitvoering toont de UI alle run-resultaten op volgorde."""
     run_data = json.dumps({"runs": [
         {"run_nummer": 1, "temperature": 0.7, "response": "Antwoord run 1", "log_status": "ok"},
         {"run_nummer": 2, "temperature": 0.7, "response": "Antwoord run 2", "log_status": "ok"},
@@ -301,7 +301,7 @@ def test_ui_toont_alle_run_resultaten_na_uitvoering(page: Page):
 
 
 def test_ui_toont_foutmelding_voor_mislukte_run(page: Page):
-    """Dekt: TD-06-23 — als een run mislukt, toont de UI een foutmelding voor die specifieke run."""
+    """Dekt: TD-06-22 — als een run mislukt, toont de UI een foutmelding voor die specifieke run."""
     run_data = json.dumps({"runs": [
         {"run_nummer": 1, "fout": "Ollama niet bereikbaar"},
         {"run_nummer": 2, "temperature": 0.7, "response": "Antwoord run 2", "log_status": "ok"},
@@ -321,7 +321,7 @@ def test_ui_toont_foutmelding_voor_mislukte_run(page: Page):
 
 
 def test_ui_toont_geslaagde_run_ondanks_mislukte_run(page: Page):
-    """Dekt: TD-06-23 — na een mislukte run toont de UI het resultaat van de geslaagde run wél."""
+    """Dekt: TD-06-22 — na een mislukte run toont de UI het resultaat van de geslaagde run wél."""
     run_data = json.dumps({"runs": [
         {"run_nummer": 1, "fout": "Ollama niet bereikbaar"},
         {"run_nummer": 2, "temperature": 0.7, "response": "Antwoord run 2", "log_status": "ok"},
@@ -480,7 +480,7 @@ def test_sessie_laden_vult_temperatures_in(page: Page):
 
 
 def test_sessie_laden_zonder_runs_velden_geeft_geen_fout(page: Page):
-    """Dekt: TD-06-22 — bestaande sessies zonder runs/temperature-velden kunnen worden geladen zonder foutmelding."""
+    """Dekt: TD-06-21 — bestaande sessies zonder runs/temperature-velden kunnen worden geladen zonder foutmelding."""
     sessie_data = json.dumps({
         "name": "oud-sessie",
         "provider": "ollama",

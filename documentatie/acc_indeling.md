@@ -1,0 +1,6 @@
+- Voor elk component op het scherm maak een nieuw ACC bestand aan
+- Binnen dit bestand: maak een indeling in weergave, interactie, validatie
+- Er is een apart bestand voor bestand import en een apart bestand voor bestand export
+- Plaats elk criterium dat zo niet ingedeeld is, in de map Algemeen. Houdt voor deze  map ook indeling weergave, inteeratie, validatie aan
+- Geef elk criterium een logische, unieke code
+- Een story zonder schermgedrag (bv. testinfrastructuur, documentatie) valt buiten deze indeling — die blijft als volledig story-bestand bewaard in plaats van opgesplitst te worden (voorbeeld: story 13)

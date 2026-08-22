@@ -6,7 +6,7 @@ Vereist: geen — de `server`-fixture (conftest.py) start de app automatisch op 
 De overige oorspronkelijke AC's van story 01 (invoervelden zichtbaar, antwoord
 verschijnt, laadstatus, per-veld validatie, Ollama-foutmelding) zijn letterlijk
 overgenomen door story 02 en worden daar gedekt (zie test_frontend_02.py en
-specs/testdekking.md, TD-02-01/07/08/09/10). Dit bestand behoudt alleen het
+documentatie/testdekking.md, TD-02-01/07/08/09/10). Dit bestand behoudt alleen het
 dekkingsitem dat uniek aan story 01 is: de verstuurknop.
 """
 import pytest

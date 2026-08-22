@@ -3,7 +3,7 @@ Frontend-tests voor story 03: sessie opslaan en laden.
 
 Vereist: geen — de `server`-fixture (conftest.py) start de app automatisch op de testpoort.
 
-Zie specs/testdekking.md voor de volledige TD-ID-toewijzing.
+Zie documentatie/testdekking.md voor de volledige TD-ID-toewijzing.
 """
 import json
 import pytest

@@ -11,7 +11,7 @@ AC gedekt:
 - Antwoord verschijnt na correct invullen van de verplichte velden
 - Achterwaartse compat: laadstatus en Ollama-503 blijven werken
 
-Zie specs/testdekking.md voor de volledige TD-ID-toewijzing.
+Zie documentatie/testdekking.md voor de volledige TD-ID-toewijzing.
 """
 import time
 import threading
