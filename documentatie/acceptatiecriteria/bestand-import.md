@@ -34,3 +34,6 @@ Bron: story 07.
   HTTP 422 met een melding.
 - **IMPORT-V-03** — Als het geüploade bestand leeg is, retourneert de backend HTTP 400 met een
   melding.
+- **IMPORT-V-04** — Een ongeldig 'runs'-veld of een ongeldige reviewer-configuratie bij een
+  aanvraag mét bijlage geeft dezelfde foutmelding als bij hetzelfde probleem zonder bijlage, in
+  plaats van stilzwijgend een default toe te passen.

@@ -26,6 +26,8 @@ DEFAULT_ROL = "Python developer"
 DEFAULT_TAAK = "een API bouwen"
 DEFAULT_DOEL = "data te verwerken"
 
+KWAADAARDIGE_HTML = 'Voor de tekst <img src=x onerror="window.__xssFired = true;"> na de tekst'
+
 DEFAULT_RUN_RESPONSE = {
     "runs": [{"run_nummer": 1, "temperature": 0.8, "response": "antwoord", "log_status": "ok"}],
 }

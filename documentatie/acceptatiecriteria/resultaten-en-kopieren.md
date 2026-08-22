@@ -30,3 +30,6 @@ Bronnen: story 01, 04, 09, 10.
 - **RESULTAAT-V-03** — Als de API-limiet na 3 pogingen nog niet is opgelost (rate limiting), toont
   het resultaat van die stap de melding "API-limiet bereikt na 3 pogingen — probeer later
   opnieuw" (zie ook RUNS-V-05 voor het algemene patroon van een mislukte run).
+- **RESULTAAT-V-04** — Bevat een run-resultaat of de eindoutput HTML- of scripttags, dan worden
+  deze getoond als platte tekst in plaats van als uitvoerbare code in de browser. Normale
+  markdown-opmaak (vetgedrukt, lijsten, codeblokken, tabellen) blijft correct weergegeven.
