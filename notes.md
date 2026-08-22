@@ -45,6 +45,41 @@ veranderen): `page.wait_for_selector("[data-testid=save-confirmation]")` toegevo
 `test_frontend_11.py` ×1). Geverifieerd: 4x achter elkaar groen op de getroffen bestanden,
 en de volledige `tests/playwright`-suite 3x achter elkaar groen (146 tests, geen fails) ná de fix.
 
+### Bevinding en fix: zelfde race condition, andere flows (na de herstructurering)
+
+Na de herstructurering naar `weergave/`/`interactie/`/`validatie/` (commit `dea58be`) bleek
+dezelfde racecondition als hierboven ook te bestaan in twee flows die niet door de eerdere
+fix gedekt waren — die dekte alleen het `save-confirmation`-patroon voor "sessie opslaan"-tests:
+
+- **Verstuur-flow** (`tests/playwright/interactie/test_provider_en_model.py` ×3,
+  `test_runs_en_temperature.py` ×3): assert op de opgevangen requestbody direct na de
+  Verstuur-klik, zonder te wachten op `[data-testid=run-results]`.
+- **Instellingen opslaan-flow** (`tests/playwright/interactie/test_instellingen.py` ×3):
+  zelfde patroon, geen equivalent van `save-confirmation` gebruikt terwijl die al bestond
+  (`[data-testid=instellingen-bevestiging]`, `static/app.js:527`).
+
+Symptoom was zichtbaar bij volledige-suite-runs (146 tests): incidenteel 1 test faalde met een
+lege `vastgelegd`-dict, telkens een andere test — gemeld door de gebruiker na twee runs
+(`test_geselecteerd_model_wordt_meegestuurd_bij_aanvraag`, `test_opslaan_stuurt_groq_rpm_waarde_mee`).
+
+**2026-08-22 opgelost:** `expect(page.locator(...)).to_be_visible()` toegevoegd na de klik,
+vóór de assertie — op `run-results` resp. `instellingen-bevestiging` — in alle 9 tests.
+
+**Bijvangst:** de fix legde bloot dat 2 tests (`test_ollama_provider_meegestuurd_in_aanvraag`,
+`test_groq_provider_meegestuurd_in_aanvraag`) hun `/api/prompt`-mock nog in het verouderde
+responseformaat (`{"response": ...}`) hadden staan, terwijl de huidige backend altijd
+`{"runs": [...]}` teruggeeft (`app.py:488`/`566`) — `run-results` bleef daardoor verborgen.
+Gefixt door de bestaande `_STUB_PROMPT_RESPONSE`-constante te hergebruiken (al gebruikt door
+de overige tests in hetzelfde bestand); alleen de mock aangepast, niet de assertie.
+
+Geverifieerd: volledige `tests/playwright`-suite 3x achter elkaar groen (146/146, ~93s per run).
+
+**Les:** dit patroon (assert op een dict gevuld in een `page.route()`-callback, direct na
+`.click()`, zonder wachten op een element dat pas ná de request verschijnt) is blijkbaar
+makkelijk opnieuw te introduceren bij het toevoegen/kopiëren van tests. Bij nieuwe
+Playwright-tests met dit patroon: altijd eerst `expect(...).to_be_visible()` op een
+post-request-element, nooit direct na `.click()` asserteren op async-gevulde state.
+
 ### Regressiecontrole (zelfde controle als story 12)
 
 - `pytest tests/backend` — 227 tests, 3x achter elkaar groen (~12s per run)
