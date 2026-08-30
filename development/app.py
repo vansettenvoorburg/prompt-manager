@@ -21,13 +21,14 @@ app = FastAPI()
 OLLAMA_URL = os.getenv("OLLAMA_URL", "http://localhost:11434/api/generate")
 OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "llama3.2")
 GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
-GROQ_MODEL = os.getenv("GROQ_MODEL", "llama3-8b-8192")
+GROQ_MODEL = os.getenv("GROQ_MODEL", "openai/gpt-oss-20b")
 GROQ_MODELS_BESCHIKBAAR = [
     "openai/gpt-oss-120b",
     "openai/gpt-oss-20b",
-    "moonshotai/kimi-k2-instruct",
-    "qwen3-32b",
+    "qwen/qwen3.8-27b",
+    "allam-2-7b",
 ]
+GROQ_REASONING_MODELLEN = {"openai/gpt-oss-120b", "openai/gpt-oss-20b"}
 SESSIONS_DIR = Path("sessions")
 LOGS_DIR = Path.home() / "Documents" / "PromptSessieManager" / "logs"
 SETTINGS_FILE = Path("settings.json")
@@ -326,14 +327,17 @@ async def call_ollama(prompt: str, temperature: float) -> str:
 async def call_groq(prompt: str, temperature: float, model: str) -> str:
     async with httpx.AsyncClient(timeout=120.0) as client:
         try:
+            payload = {
+                "model": model,
+                "messages": [{"role": "user", "content": prompt}],
+                "temperature": temperature,
+            }
+            if model in GROQ_REASONING_MODELLEN:
+                payload["reasoning_effort"] = "low"
             response = await client.post(
                 "https://api.groq.com/openai/v1/chat/completions",
                 headers={"Authorization": f"Bearer {GROQ_API_KEY}"},
-                json={
-                    "model": model,
-                    "messages": [{"role": "user", "content": prompt}],
-                    "temperature": temperature,
-                },
+                json=payload,
             )
             response.raise_for_status()
             data = response.json()

@@ -4,7 +4,7 @@ Backend-tests voor story 05: Groq als tweede provider.
 AC gedekt:
 - Bij provider 'groq' roept de backend call_groq aan, niet call_ollama
 - Bij provider 'ollama' (standaard) roept de backend call_ollama aan
-- GROQ_MODEL is instelbaar via omgevingsvariabele (standaard: llama3-8b-8192)
+- GROQ_MODEL is instelbaar via omgevingsvariabele (standaard: openai/gpt-oss-20b)
 - GROQ_API_KEY ontbreekt of is leeg → HTTP 503 met passende melding
 - Groq-aanvraag: bestandsnaam bevat 'groq' als provider
 - Groq-aanvraag: veld 'provider' in logbestand is 'groq'
@@ -97,12 +97,12 @@ async def test_standaard_provider_is_ollama(client):
 # ---------------------------------------------------------------------------
 
 async def test_groq_model_standaard_is_llama3(monkeypatch):
-    """Als GROQ_MODEL niet is ingesteld, is de standaardwaarde 'llama3-8b-8192'."""
+    """Als GROQ_MODEL niet is ingesteld, is de standaardwaarde 'openai/gpt-oss-20b'."""
     monkeypatch.delenv("GROQ_MODEL", raising=False)
     with patch("dotenv.load_dotenv"):
         import app as app_module
         importlib.reload(app_module)
-    assert app_module.GROQ_MODEL == "llama3-8b-8192"
+    assert app_module.GROQ_MODEL == "openai/gpt-oss-20b"
 
 
 async def test_groq_model_instelbaar_via_env(monkeypatch):

@@ -37,8 +37,8 @@ pytestmark = pytest.mark.asyncio
 GROQ_MODELS_NIEUW = [
     "openai/gpt-oss-120b",
     "openai/gpt-oss-20b",
-    "moonshotai/kimi-k2-instruct",
-    "qwen3-32b",
+    "qwen/qwen3.8-27b",
+    "allam-2-7b",
 ]
 
 GROQ_PAYLOAD = {
@@ -134,11 +134,11 @@ async def test_geselecteerd_model_wordt_gebruikt_voor_groq_aanroep(client, groq_
         return "antwoord"
 
     with patch("app.call_groq", side_effect=vang_op):
-        payload = {**GROQ_PAYLOAD, "model": "qwen3-32b"}
+        payload = {**GROQ_PAYLOAD, "model": "allam-2-7b"}
         response = await client.post("/api/prompt", json=payload)
 
     assert response.status_code == 200
-    assert captured.get("model") == "qwen3-32b"
+    assert captured.get("model") == "allam-2-7b"
 
 
 async def test_geen_model_meegestuurd_valt_terug_op_groq_model(client, groq_key, logs_dir, monkeypatch):
@@ -237,12 +237,12 @@ async def test_nieuwe_modelwaarden_worden_geaccepteerd(client, groq_key, logs_di
 async def test_log_model_veld_bevat_daadwerkelijk_gebruikte_model(client, groq_key, logs_dir):
     """Het veld 'model' in het logbestand bevat het daadwerkelijk gebruikte model."""
     with patch("app.call_groq", new_callable=AsyncMock, return_value="antwoord"):
-        payload = {**GROQ_PAYLOAD, "model": "qwen3-32b"}
+        payload = {**GROQ_PAYLOAD, "model": "allam-2-7b"}
         await client.post("/api/prompt", json=payload)
 
     bestand = next(logs_dir.iterdir())
     data = json.loads(bestand.read_text(encoding="utf-8"))
-    assert data["model"] == "qwen3-32b"
+    assert data["model"] == "allam-2-7b"
 
 
 async def test_logbestandsnaam_bevat_provider_en_model(client, groq_key, logs_dir):
@@ -260,13 +260,13 @@ async def test_logbestandsnaam_bevat_provider_en_model(client, groq_key, logs_di
 async def test_ongeldige_tekens_in_modelnaam_vervangen_in_bestandsnaam(client, groq_key, logs_dir):
     """Tekens die ongeldig zijn voor bestandsnamen (zoals '/') worden vervangen door '-'."""
     with patch("app.call_groq", new_callable=AsyncMock, return_value="antwoord"):
-        payload = {**GROQ_PAYLOAD, "model": "moonshotai/kimi-k2-instruct"}
+        payload = {**GROQ_PAYLOAD, "model": "qwen/qwen3.8-27b"}
         await client.post("/api/prompt", json=payload)
 
     namen = [f.name for f in logs_dir.iterdir()]
     assert len(namen) == 1, f"Verwacht precies 1 logbestand, kreeg: {namen}"
     assert "/" not in namen[0], f"Bestandsnaam bevat nog een '/': {namen[0]!r}"
-    assert "moonshotai-kimi-k2-instruct" in namen[0], (
+    assert "qwen-qwen3.8-27b" in namen[0], (
         f"Gesaneerde modelnaam ontbreekt in bestandsnaam: {namen[0]!r}"
     )
 

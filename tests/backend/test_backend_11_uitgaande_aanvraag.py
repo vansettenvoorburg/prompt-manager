@@ -38,8 +38,8 @@ GROQ_ENDPOINT = "https://api.groq.com/openai/v1/chat/completions"
 GROQ_MODELS_NIEUW = [
     "openai/gpt-oss-120b",
     "openai/gpt-oss-20b",
-    "moonshotai/kimi-k2-instruct",
-    "qwen3-32b",
+    "qwen/qwen3.8-27b",
+    "allam-2-7b",
 ]
 
 GROQ_PAYLOAD = {
@@ -119,12 +119,12 @@ async def test_geselecteerd_model_zit_in_uitgaande_groq_aanvraag(client, groq_ke
     """Het geselecteerde model staat in de JSON-body van de echte aanroep naar de Groq API."""
     captured = []
     with patch("httpx.AsyncClient.post", new=_stub_httpx_post(captured)):
-        payload = {**GROQ_PAYLOAD, "model": "qwen3-32b"}
+        payload = {**GROQ_PAYLOAD, "model": "allam-2-7b"}
         response = await client.post("/api/prompt", json=payload)
 
     assert response.status_code == 200, f"Onverwachte statuscode: {response.status_code}: {response.text}"
     assert len(captured) == 1, f"Verwacht 1 uitgaande aanvraag, kreeg {len(captured)}: {captured}"
-    assert captured[0]["json"]["model"] == "qwen3-32b", (
+    assert captured[0]["json"]["model"] == "allam-2-7b", (
         f"Verwacht model='qwen3-32b' in uitgaande aanvraag, kreeg: {captured[0]['json']}"
     )
 
@@ -160,7 +160,7 @@ async def test_groq_aanvraag_blijft_naar_dezelfde_endpoint_gaan(client, groq_key
     """Ongeacht het gekozen model blijft de aanvraag naar dezelfde OpenAI-compatibele Groq-endpoint gaan."""
     captured = []
     with patch("httpx.AsyncClient.post", new=_stub_httpx_post(captured)):
-        payload = {**GROQ_PAYLOAD, "model": "moonshotai/kimi-k2-instruct"}
+        payload = {**GROQ_PAYLOAD, "model": "qwen/qwen3.8-27b"}
         await client.post("/api/prompt", json=payload)
 
     assert len(captured) == 1
@@ -192,14 +192,14 @@ async def test_ollama_roept_groq_endpoint_niet_aan_ondanks_model_veld(client, lo
 async def test_bevestigd_model_wordt_gelogd(client, groq_key, logs_dir):
     """Het logbestand bevat 'model_bevestigd_door_groq' met het model uit de Groq-respons."""
     captured = []
-    with patch("httpx.AsyncClient.post", new=_stub_httpx_post(captured, groq_model_in_respons="qwen3-32b")):
-        payload = {**GROQ_PAYLOAD, "model": "qwen3-32b"}
+    with patch("httpx.AsyncClient.post", new=_stub_httpx_post(captured, groq_model_in_respons="allam-2-7b")):
+        payload = {**GROQ_PAYLOAD, "model": "allam-2-7b"}
         response = await client.post("/api/prompt", json=payload)
 
     assert response.status_code == 200
     bestand = next(logs_dir.iterdir())
     data = json.loads(bestand.read_text(encoding="utf-8"))
-    assert data.get("model_bevestigd_door_groq") == "qwen3-32b", (
+    assert data.get("model_bevestigd_door_groq") == "allam-2-7b", (
         f"'model_bevestigd_door_groq' ontbreekt of is onjuist: {data}"
     )
 
@@ -207,8 +207,8 @@ async def test_bevestigd_model_wordt_gelogd(client, groq_key, logs_dir):
 async def test_geen_mismatch_waarschuwing_bij_gelijk_model(client, groq_key, logs_dir):
     """Als aangevraagd en bevestigd model overeenkomen, bevat het run-resultaat geen mismatch-waarschuwing."""
     captured = []
-    with patch("httpx.AsyncClient.post", new=_stub_httpx_post(captured, groq_model_in_respons="qwen3-32b")):
-        payload = {**GROQ_PAYLOAD, "model": "qwen3-32b"}
+    with patch("httpx.AsyncClient.post", new=_stub_httpx_post(captured, groq_model_in_respons="allam-2-7b")):
+        payload = {**GROQ_PAYLOAD, "model": "allam-2-7b"}
         response = await client.post("/api/prompt", json=payload)
 
     stap = response.json()["runs"][0]
@@ -245,13 +245,13 @@ async def test_mismatch_tussen_aangevraagd_en_bevestigd_model_geeft_waarschuwing
     """Als het bevestigde model afwijkt van het aangevraagde model, bevat het run-resultaat een waarschuwing."""
     captured = []
     with patch("httpx.AsyncClient.post", new=_stub_httpx_post(captured, groq_model_in_respons="llama3-8b-8192")):
-        payload = {**GROQ_PAYLOAD, "model": "qwen3-32b"}
+        payload = {**GROQ_PAYLOAD, "model": "allam-2-7b"}
         response = await client.post("/api/prompt", json=payload)
 
     stap = response.json()["runs"][0]
     assert "model_mismatch_warning" in stap, f"Verwachte mismatch-waarschuwing ontbreekt: {stap}"
     melding = str(stap["model_mismatch_warning"])
-    assert "qwen3-32b" in melding and "llama3-8b-8192" in melding, (
+    assert "allam-2-7b" in melding and "llama3-8b-8192" in melding, (
         f"Waarschuwing noemt niet beide modellen: {melding!r}"
     )
 
@@ -260,7 +260,7 @@ async def test_ontbrekend_model_veld_in_respons_geeft_geen_waarschuwing(client, 
     """Als de Groq-respons geen 'model'-veld bevat, wordt dit niet als mismatch behandeld."""
     captured = []
     with patch("httpx.AsyncClient.post", new=_stub_httpx_post(captured, groq_model_in_respons=None)):
-        payload = {**GROQ_PAYLOAD, "model": "qwen3-32b"}
+        payload = {**GROQ_PAYLOAD, "model": "allam-2-7b"}
         response = await client.post("/api/prompt", json=payload)
 
     stap = response.json()["runs"][0]
