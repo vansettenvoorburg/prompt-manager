@@ -59,6 +59,7 @@ class PromptPage:
         self.response = page.get_by_test_id("response")
         self.run_results = page.get_by_test_id("run-results")
         self.eindoutput = page.get_by_test_id("eindoutput")
+        self.eindoutput_items = page.get_by_test_id("eindoutput-item")
         self.reviewer_stap_items = page.get_by_test_id("reviewer-stap-item")
         self.error = page.get_by_test_id("error")
         self.log_status = page.get_by_test_id("log-status")
@@ -124,6 +125,14 @@ class PromptPage:
             "navigator.clipboard = { writeText: (t) => Promise.reject(new Error('geen toestemming')) }"
         )
 
+    def mock_clipboard_met_opvang(self) -> None:
+        """Mockt de klembord-API zodat de laatst gekopieerde tekst opvraagbaar is via
+        expect_laatst_gekopieerd — nodig om te controleren dat elk eindoutput-blok zijn
+        eigen inhoud kopieert (REVIEW-W-05) in plaats van die van een ander blok."""
+        self.page.evaluate(
+            "navigator.clipboard = { writeText: (t) => { window.__laatstGekopieerd = t; return Promise.resolve(); } }"
+        )
+
     def eerste_kopieer_knop(self, binnen: str = "run-results"):
         return self.page.get_by_test_id(binnen).get_by_test_id("kopieer-knop").first
 
@@ -160,6 +169,16 @@ class PromptPage:
 
     def expect_eindoutput_zichtbaar(self) -> None:
         expect(self.eindoutput).to_be_visible()
+
+    def expect_eindoutput_blokken_aantal(self, aantal: int) -> None:
+        expect(self.eindoutput_items).to_have_count(aantal)
+
+    def expect_eindoutput_blok_toont_hoofdrun_nummer(self, blok: Locator, nummer: int) -> None:
+        expect(blok.locator(".run-header")).to_contain_text(f"run {nummer}")
+
+    def expect_laatst_gekopieerd(self, tekst: str) -> None:
+        werkelijk = self.page.evaluate("window.__laatstGekopieerd")
+        assert werkelijk == tekst, f"Verwacht dat {tekst!r} gekopieerd was, kreeg: {werkelijk!r}"
 
     def expect_reviewer_stap_zichtbaar(self) -> None:
         expect(self.reviewer_stap_items.first).to_be_visible()
