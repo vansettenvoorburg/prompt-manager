@@ -505,15 +505,17 @@ async def _voer_reviewer_ronde_uit(
     groq_model_gebruikt: str,
     delay: float,
     is_eerste_request: bool,
-) -> tuple[list[dict], str]:
+) -> tuple[list[dict], str, list[dict]]:
     reviewer_stappen = []
     eindoutput = ""
+    eindoutputs = []
 
     for hoofdrun in resultaten:
         if "response" not in hoofdrun:
             continue
         hoofdrun_nummer = hoofdrun["run_nummer"]
         vorige_output = hoofdrun["response"]
+        hoofdrun_fout = None
 
         for reviewer_nr, reviewer in enumerate(body.reviewers, start=1):
             for run_nummer in range(1, reviewer.runs + 1):
@@ -561,6 +563,7 @@ async def _voer_reviewer_ronde_uit(
                         stap["log_path"] = str(log_pad)
                     reviewer_stappen.append(stap)
                     vorige_output = result
+                    hoofdrun_fout = None
 
                 except RateLimitError as exc:
                     reviewer_stappen.append({
@@ -571,6 +574,7 @@ async def _voer_reviewer_ronde_uit(
                         "fout": str(exc),
                         "rate_limit_retries": exc.retries,
                     })
+                    hoofdrun_fout = str(exc)
                 except ConnectionError as exc:
                     reviewer_stappen.append({
                         "hoofdrun_nummer": hoofdrun_nummer,
@@ -579,10 +583,15 @@ async def _voer_reviewer_ronde_uit(
                         "run_nummer": run_nummer,
                         "fout": str(exc),
                     })
+                    hoofdrun_fout = str(exc)
 
         eindoutput = vorige_output
+        if hoofdrun_fout is not None:
+            eindoutputs.append({"hoofdrun_nummer": hoofdrun_nummer, "fout": hoofdrun_fout})
+        else:
+            eindoutputs.append({"hoofdrun_nummer": hoofdrun_nummer, "eindoutput": eindoutput})
 
-    return reviewer_stappen, eindoutput
+    return reviewer_stappen, eindoutput, eindoutputs
 
 
 async def _voer_prompt_uit(
@@ -603,9 +612,12 @@ async def _voer_prompt_uit(
     if not body.reviewers:
         return {"runs": resultaten}
 
-    reviewer_stappen, eindoutput = await _voer_reviewer_ronde_uit(
+    reviewer_stappen, eindoutput, eindoutputs = await _voer_reviewer_ronde_uit(
         body, resultaten, bijlage_tekst, provider, groq_model_gebruikt, delay, is_eerste_request
     )
+
+    if len(resultaten) > 1:
+        return {"runs": resultaten, "reviewer_stappen": reviewer_stappen, "eindoutputs": eindoutputs}
 
     return {"runs": resultaten, "reviewer_stappen": reviewer_stappen, "eindoutput": eindoutput}
 

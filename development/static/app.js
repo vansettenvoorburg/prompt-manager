@@ -173,6 +173,33 @@ function maakKopieerKnop(tekst) {
   return knop;
 }
 
+function maakEindoutputItem(item) {
+  const blok = document.createElement('div');
+  blok.setAttribute('data-testid', 'eindoutput-item');
+  blok.classList.add('eindoutput-item');
+
+  const header = document.createElement('div');
+  header.classList.add('run-header');
+  const label = document.createElement('span');
+  label.textContent = `Eindoutput — run ${item.hoofdrun_nummer}`;
+  header.appendChild(label);
+
+  const body = document.createElement('div');
+  body.classList.add('run-body');
+
+  if (item.fout) {
+    blok.classList.add('run-fout');
+    body.textContent = `Fout — ${item.fout}`;
+  } else {
+    header.appendChild(maakKopieerKnop(item.eindoutput || ''));
+    body.innerHTML = renderAiOutput(item.eindoutput);
+  }
+
+  blok.appendChild(header);
+  blok.appendChild(body);
+  return blok;
+}
+
 function maakReviewerStapItem(stap) {
   const item = document.createElement('div');
   item.setAttribute('data-testid', 'reviewer-stap-item');
@@ -638,7 +665,13 @@ button.addEventListener('click', async () => {
     const data = await response.json();
     if (response.ok) {
       renderRunResultaten(data.runs, data.reviewer_stappen);
-      if (data.eindoutput !== undefined) {
+      if (data.eindoutputs !== undefined) {
+        eindoutputEl.innerHTML = '';
+        for (const item of data.eindoutputs) {
+          eindoutputEl.appendChild(maakEindoutputItem(item));
+        }
+        eindoutputEl.classList.remove('hidden');
+      } else if (data.eindoutput !== undefined) {
         eindoutputEl.innerHTML = '';
         const eindHeader = document.createElement('div');
         eindHeader.classList.add('run-header');

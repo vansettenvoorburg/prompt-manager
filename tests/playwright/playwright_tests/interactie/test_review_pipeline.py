@@ -86,6 +86,44 @@ def test_uitvoer_toont_eindoutput(app: PromptPage):
 
 
 # ---------------------------------------------------------------------------
+# REVIEW-W-05 — kopieerknop van een eindoutput-blok kopieert de eigen inhoud
+# ---------------------------------------------------------------------------
+
+def test_kopieerknop_van_eindoutput_blok_kopieert_eigen_inhoud(app: PromptPage):
+    """Testcode: review_pipeline.interactie.11
+    Dekt: REVIEW-W-05 — de kopieerknop van het tweede eindoutput-blok kopieert het
+    resultaat van die hoofdrun, niet dat van het eerste blok.
+    """
+    stub_prompt_response(
+        app.page,
+        runs=[
+            {"run_nummer": 1, "temperature": 0.7, "response": "hoofdrun 1 antwoord", "log_status": "ok"},
+            {"run_nummer": 2, "temperature": 0.7, "response": "hoofdrun 2 antwoord", "log_status": "ok"},
+        ],
+        reviewer_stappen=[
+            {"hoofdrun_nummer": 1, "reviewer_nr": 1, "reviewer_rol": "QA engineer", "run_nummer": 1,
+             "temperature": 0.5, "response": "hoofdrun 1 review", "log_status": "ok"},
+            {"hoofdrun_nummer": 2, "reviewer_nr": 1, "reviewer_rol": "QA engineer", "run_nummer": 1,
+             "temperature": 0.5, "response": "hoofdrun 2 review", "log_status": "ok"},
+        ],
+        eindoutputs=[
+            {"hoofdrun_nummer": 1, "eindoutput": "hoofdrun 1 review"},
+            {"hoofdrun_nummer": 2, "eindoutput": "hoofdrun 2 review"},
+        ],
+    )
+    app.vul_verplichte_velden()
+    app.fill_runs(2)
+    item = app.reviewers.toevoegen()
+    item.fill_rol("QA engineer")
+    app.verstuur()
+    app.mock_clipboard_met_opvang()
+
+    app.eindoutput_items.nth(1).get_by_test_id("kopieer-knop").click()
+
+    app.expect_laatst_gekopieerd("hoofdrun 2 review")
+
+
+# ---------------------------------------------------------------------------
 # Regressie: sessie opslaan/laden van reviewers (geen exacte AC-bullet in
 # review-pipeline.md, gerelateerd aan REVIEW-I-04 — reviewerdata moet correct
 # door sessieopslag heen reizen)
